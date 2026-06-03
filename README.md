@@ -1,16 +1,78 @@
-# React + Vite
+#  AI Interviewer
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+>  **Status: Actively in Development** — New features are being added regularly. Feedback and suggestions are welcome!
 
-Currently, two official plugins are available:
+An intelligent interview preparation assistant powered by AI — built with React 19 and Vite. Practice your interview skills with a smart bot that asks real interview questions and helps you prepare with confidence.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+🔗 **Live Demo:** [interview-bot-ivory-six.vercel.app](https://interview-bot-ivory-six.vercel.app)
 
-## React Compiler
+---
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+##  Current Features
 
-## Expanding the ESLint configuration
+-  AI-powered conversational interview experience
+-  Real-time chat interface
+-  Fast and responsive UI built with React 19 + Vite
+-  Works on all screen sizes
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+---
+
+##  Roadmap — Coming Soon
+
+- [ ] Role-specific interview questions (Frontend, Backend, etc.)
+- [ ] Answer evaluation and scoring
+- [ ] Interview history and progress tracking
+- [ ] Difficulty levels (Beginner → Senior)
+- [ ] Resume-based question generation
+- [ ] Dark / Light mode toggle
+
+---
+
+## Tech Stack
+
+| Technology | Usage |
+|-----------|-------|
+| React 19 | Frontend UI |
+| Vite 8 | Build tool & Dev server |
+| JavaScript (ES6+) | Core logic |
+| CSS | Styling |
+| Vercel | Deployment |
+
+---
+
+## Getting Started
+
+### Prerequisites
+- Node.js (v18 or higher)
+- npm
+
+### Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/Hammad-103/interview-bot.git
+
+# Navigate to project folder
+cd interview-bot
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+App will run at `http://localhost:5173`
+
+---
+
+## Author
+
+**Hammad**
+- GitHub: [@Hammad-103](https://github.com/Hammad-103)
+
+---
+
+## License
+
+This project is open source and available under the [MIT License](LICENSE).
