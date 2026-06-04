@@ -1,4 +1,4 @@
-#Bot Interviewer
+#  Interview Bot
 
 >  **Status: Actively in Development** — New features are being added regularly. Feedback and suggestions are welcome!
  
