@@ -43,3 +43,6 @@ button {
 input, textarea {
   font-family: 'Syne', sans-serif;
 }
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

@@ -10,6 +10,7 @@ export default function InterviewScreen({ config, onFinish }) {
   const [voiceLabel, setVoiceLabel] = useState('waiting for interviewer...')
   const [showSubmit, setShowSubmit] = useState(false)
   const [phase, setPhase] = useState('bot')
+  const [isEvaluating, setIsEvaluating] = useState(false)
   const chatRef = useRef(null)
   const recognitionRef = useRef(null)
   const questions = QUESTIONS[config.role][config.level]
@@ -149,6 +150,7 @@ export default function InterviewScreen({ config, onFinish }) {
   }
 
   function finishInterview(finalAnswers) {
+    setIsEvaluating(true)
     window.speechSynthesis.cancel()
     setPhase('bot')
     setVoiceLabel('evaluating your answers...')
@@ -187,6 +189,15 @@ export default function InterviewScreen({ config, onFinish }) {
 
   return (
     <div style={styles.container}>
+      {isEvaluating && (
+  <div style={styles.evaluatingOverlay}>
+    <div style={styles.evaluatingBox}>
+      <div style={styles.spinner}></div>
+      <div style={styles.evalText}>Evaluating your answers...</div>
+      <div style={styles.evalSub}>AI is analyzing your responses</div>
+    </div>
+  </div>
+)}
       <div style={styles.header}>
         <div>
           <div style={styles.role}>{config.role}</div>
@@ -259,6 +270,30 @@ const styles = {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     padding: '20px 24px 16px', borderBottom: '1px solid rgba(255,255,255,0.07)',
   },
+  evaluatingOverlay: {
+  position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+  background: 'rgba(10,10,15,0.95)',
+  display: 'flex', alignItems: 'center', justifyContent: 'center',
+  zIndex: 100,
+},
+evaluatingBox: {
+  display: 'flex', flexDirection: 'column',
+  alignItems: 'center', gap: '16px',
+},
+spinner: {
+  width: '40px', height: '40px',
+  border: '3px solid rgba(124,106,255,0.2)',
+  borderTop: '3px solid #7c6aff',
+  borderRadius: '50%',
+  animation: 'spin 1s linear infinite',
+},
+evalText: {
+  fontSize: '16px', fontWeight: '700', color: '#f0f0f8',
+},
+evalSub: {
+  fontSize: '13px', color: '#6b6b80',
+  fontFamily: "'DM Mono', monospace",
+},
   role: { fontSize: '13px', fontWeight: '700', color: '#7c6aff', fontFamily: "'DM Mono', monospace" },
   level: { fontSize: '11px', color: '#6b6b80', fontFamily: "'DM Mono', monospace" },
   progressWrap: { display: 'flex', alignItems: 'center', gap: '10px' },
