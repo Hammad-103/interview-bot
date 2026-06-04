@@ -4,7 +4,7 @@
  
 An intelligent interview preparation assistant powered by AI — built with React 19 and Vite. Select your role, go through a real interview session, and get a detailed report card on your performance.
  
-🔗 **Live Demo:** [interview-bot-ivory-six.vercel.app](https://interview-bot-ivory-six.vercel.app)
+ **Live Demo:** [interview-bot-ivory-six.vercel.app](https://interview-bot-ivory-six.vercel.app)
  
 ---
  
