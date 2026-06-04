@@ -1,5 +1,5 @@
- AI Interviewer
- 
+** Bot Interviewer
+** 
 >  **Status: Actively in Development** — New features are being added regularly. Feedback and suggestions are welcome!
  
 An intelligent interview preparation assistant powered by AI — built with React 19 and Vite. Select your role, go through a real interview session, and get a detailed report card on your performance.
