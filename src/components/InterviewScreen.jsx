@@ -177,30 +177,50 @@ export default function InterviewScreen({ config, onFinish }) {
     }
   }
 
-  function finishInterview(finalAnswers) {
+  async function finishInterview(finalAnswers) {
     window.speechSynthesis.cancel()
     setIsEvaluating(true)
     setPhase('evaluating')
-    setStatusText('Analyzing your performance...')
+    setStatusText('AI is analyzing your answers...')
 
-    const keywordSets = KEYWORDS[config.role][config.level]
-    const scores = finalAnswers.map((answer, i) => {
-      if (answer === '[Skipped]') return 1
-      const text = answer.toLowerCase()
-      const words = text.split(/\s+/).length
-      const keywords = keywordSets[i] || []
-      const matched = keywords.filter(k => text.includes(k.toLowerCase())).length
-      const keywordScore = Math.min((matched / Math.max(keywords.length * 0.4, 1)) * 5, 5)
-      const lengthScore = words < 5 ? 0 : words < 20 ? 0.5 : words < 40 ? 1 : words < 80 ? 1.5 : 2
-      const hasPunctuation = (text.match(/[.!?]/g) || []).length >= 2
-      const hasExample = /example|instance|like|such as|for instance|when i|i did|we used|in my/.test(text)
-      const structureScore = (hasPunctuation ? 1 : 0) + (hasExample ? 1 : 0)
-      return Math.min(Math.max(Math.round(keywordScore + lengthScore + structureScore), 1), 9)
-    })
+    const qa = questions.map((q, i) => ({ q, a: finalAnswers[i] }))
+    const prompt = `You are a strict but fair interviewer evaluating a ${config.level} ${config.role} candidate. Rate each answer from 1-9. Questions and answers: ${qa.map((x, i) => `Q${i+1}: ${x.q}\nAnswer: ${x.a}`).join('\n\n')}. Respond ONLY with a JSON array like [7,4,8,3,6] nothing else.`
 
-    setTimeout(() => {
+    try {
+      const response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": import.meta.env.VITE_ANTHROPIC_KEY,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true"
+        },
+        body: JSON.stringify({
+          model: "claude-sonnet-4-20250514",
+          max_tokens: 100,
+          messages: [{ role: "user", content: prompt }]
+        })
+      })
+      const data = await response.json()
+      const scores = JSON.parse(data.content[0].text.trim())
       onFinish({ questions, answers: finalAnswers, scores })
-    }, 2000)
+    } catch (err) {
+      // Fallback to keyword scoring
+      const keywordSets = KEYWORDS[config.role][config.level]
+      const scores = finalAnswers.map((answer, i) => {
+        if (answer === '[Skipped]') return 1
+        const text = answer.toLowerCase()
+        const words = text.split(/\s+/).length
+        const keywords = keywordSets[i] || []
+        const matched = keywords.filter(k => text.includes(k.toLowerCase())).length
+        const keywordScore = Math.min((matched / Math.max(keywords.length * 0.4, 1)) * 5, 5)
+        const lengthScore = words < 5 ? 0 : words < 20 ? 0.5 : words < 40 ? 1 : words < 80 ? 1.5 : 2
+        const hasPunctuation = (text.match(/[.!?]/g) || []).length >= 2
+        const hasExample = /example|instance|like|such as|for instance|when i|i did|we used|in my/.test(text)
+        return Math.min(Math.max(Math.round(keywordScore + lengthScore + (hasPunctuation ? 1 : 0) + (hasExample ? 1 : 0)), 1), 9)
+      })
+      onFinish({ questions, answers: finalAnswers, scores })
+    }
   }
 
   const botSpeaking = phase === 'bot'
