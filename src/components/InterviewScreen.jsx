@@ -2,13 +2,15 @@ import { useState, useEffect, useRef } from 'react'
 import { QUESTIONS, KEYWORDS } from '../data/questions'
 
 export default function InterviewScreen({ config, onFinish }) {
-  const [phase, setPhase] = useState('bot') // bot | ready | listening | evaluating
+  const [phase, setPhase] = useState('bot')
   const [currentQ, setCurrentQ] = useState(0)
   const [answers, setAnswers] = useState([])
   const [transcript, setTranscript] = useState('')
   const [showSubmit, setShowSubmit] = useState(false)
   const [statusText, setStatusText] = useState('Interviewer is joining...')
   const [isEvaluating, setIsEvaluating] = useState(false)
+  const [botRings, setBotRings] = useState(false)
+  const [userRings, setUserRings] = useState(false)
   const recognitionRef = useRef(null)
   const questions = QUESTIONS[config.role][config.level]
 
@@ -16,16 +18,16 @@ export default function InterviewScreen({ config, onFinish }) {
     const style = document.createElement('style')
     style.innerHTML = `
       @keyframes ripple {
-        0% { transform: scale(1); opacity: 0.6; }
-        100% { transform: scale(2.2); opacity: 0; }
+        0% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
+        100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
       }
       @keyframes ripple2 {
-        0% { transform: scale(1); opacity: 0.4; }
-        100% { transform: scale(1.8); opacity: 0; }
+        0% { transform: translate(-50%, -50%) scale(1); opacity: 0.4; }
+        100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
       }
       @keyframes ripple3 {
-        0% { transform: scale(1); opacity: 0.3; }
-        100% { transform: scale(2.6); opacity: 0; }
+        0% { transform: translate(-50%, -50%) scale(1); opacity: 0.3; }
+        100% { transform: translate(-50%, -50%) scale(2.6); opacity: 0; }
       }
       @keyframes pulse {
         0%, 100% { transform: scale(1); }
@@ -51,8 +53,9 @@ export default function InterviewScreen({ config, onFinish }) {
     setTimeout(() => {
       const introText = "Hi! I'm your AI interviewer. I'll ask you 5 questions — take your time with each answer. Ready?"
       setStatusText('Interviewer is speaking...')
-      setPhase('bot')
+      setBotRings(true)
       speakText(introText, () => {
+        setBotRings(false)
         setTimeout(() => askQuestion(0), 500)
       })
     }, 800)
@@ -63,7 +66,6 @@ export default function InterviewScreen({ config, onFinish }) {
       onDone && onDone()
       return
     }
-    setPhase('bot')
     window.speechSynthesis.cancel()
     const utt = new SpeechSynthesisUtterance(text)
     utt.rate = 0.92
@@ -72,9 +74,7 @@ export default function InterviewScreen({ config, onFinish }) {
     const preferred = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google'))
       || voices.find(v => v.lang.startsWith('en'))
     if (preferred) utt.voice = preferred
-    utt.onend = () => {
-      onDone && onDone()
-    }
+    utt.onend = () => { onDone && onDone() }
     window.speechSynthesis.speak(utt)
   }
 
@@ -83,28 +83,26 @@ export default function InterviewScreen({ config, onFinish }) {
     setCurrentQ(index)
     setPhase('bot')
     setStatusText('Interviewer is speaking...')
+    setBotRings(true)
     speakText(`Question ${index + 1}. ${questions[index]}`, () => {
+      setBotRings(false)
       setPhase('ready')
       setStatusText('Tap the mic to answer')
     })
   }
 
-  function toggleMic() {
-    if (phase === 'listening') stopListening()
-    else if (phase === 'ready') startListening()
-  }
-
-  function startListening() {
+ function startListening() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SR) {
-      setStatusText('Use Chrome for voice support')
+      setStatusText('Please use Chrome for voice support')
       return
     }
+
+    let final = ''
     const recognition = new SR()
-    recognition.continuous = true
+    recognition.continuous = false  // ← false kar diya
     recognition.interimResults = true
     recognition.lang = 'en-US'
-    let final = ''
 
     recognition.onresult = (e) => {
       let interim = ''
@@ -116,20 +114,42 @@ export default function InterviewScreen({ config, onFinish }) {
       if (final.trim()) setShowSubmit(true)
     }
 
-    recognition.onerror = () => stopListening()
+    recognition.onend = () => {
+      // Agar still listening phase mein hai toh restart karo
+      if (recognitionRef.current) {
+        recognitionRef.current = null
+        const newRec = new SR()
+        newRec.continuous = false
+        newRec.interimResults = true
+        newRec.lang = 'en-US'
+        newRec.onresult = recognition.onresult
+        newRec.onend = recognition.onend
+        newRec.onerror = recognition.onerror
+        newRec.start()
+        recognitionRef.current = newRec
+      }
+    }
+
+    recognition.onerror = (e) => {
+      if (e.error === 'no-speech') return  // ignore karo
+      setStatusText('Mic error — try again')
+      stopListening()
+    }
+
     recognition.start()
     recognitionRef.current = recognition
     setPhase('listening')
-    setStatusText('Listening...')
+    setUserRings(true)
+    setStatusText('Listening... speak your answer')
   }
 
-  function stopListening() {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop()
-      recognitionRef.current = null
-    }
+function stopListening() {
+    const rec = recognitionRef.current
+    recognitionRef.current = null  // ← pehle null karo taake onend restart na kare
+    if (rec) rec.stop()
     setPhase('ready')
-    setStatusText('Tap submit or continue speaking')
+    setUserRings(false)
+    setStatusText('Tap submit or speak again')
   }
 
   function submitAnswer() {
@@ -137,6 +157,7 @@ export default function InterviewScreen({ config, onFinish }) {
       recognitionRef.current.stop()
       recognitionRef.current = null
     }
+    setUserRings(false)
     const ans = transcript.trim()
     if (!ans) { skipQuestion(); return }
     setTranscript('')
@@ -147,12 +168,14 @@ export default function InterviewScreen({ config, onFinish }) {
     if (next < questions.length) {
       setPhase('bot')
       setStatusText('Interviewer is speaking...')
+      setBotRings(true)
       const acks = ['Got it. Next question.', 'Interesting. Moving on.', 'Thank you. Here is the next one.', 'Noted. Let us continue.']
       speakText(acks[Math.floor(Math.random() * acks.length)], () => {
+        setBotRings(false)
         setTimeout(() => askQuestion(next), 400)
       })
     } else {
-      setPhase('bot')
+      setPhase('evaluating')
       setStatusText('Evaluating your answers...')
       speakText('That is all 5 questions. Evaluating your answers now.', () => {
         finishInterview(newAnswers)
@@ -167,6 +190,7 @@ export default function InterviewScreen({ config, onFinish }) {
     }
     setTranscript('')
     setShowSubmit(false)
+    setUserRings(false)
     const newAnswers = [...answers, '[Skipped]']
     setAnswers(newAnswers)
     const next = currentQ + 1
@@ -181,6 +205,8 @@ export default function InterviewScreen({ config, onFinish }) {
     window.speechSynthesis.cancel()
     setIsEvaluating(true)
     setPhase('evaluating')
+    setBotRings(false)
+    setUserRings(false)
     setStatusText('AI is analyzing your answers...')
 
     const qa = questions.map((q, i) => ({ q, a: finalAnswers[i] }))
@@ -203,9 +229,8 @@ export default function InterviewScreen({ config, onFinish }) {
       })
       const data = await response.json()
       const scores = JSON.parse(data.content[0].text.trim())
-      onFinish({ questions, answers: finalAnswers, scores })
+      setTimeout(() => onFinish({ questions, answers: finalAnswers, scores }), 1000)
     } catch (err) {
-      // Fallback to keyword scoring
       const keywordSets = KEYWORDS[config.role][config.level]
       const scores = finalAnswers.map((answer, i) => {
         if (answer === '[Skipped]') return 1
@@ -219,17 +244,13 @@ export default function InterviewScreen({ config, onFinish }) {
         const hasExample = /example|instance|like|such as|for instance|when i|i did|we used|in my/.test(text)
         return Math.min(Math.max(Math.round(keywordScore + lengthScore + (hasPunctuation ? 1 : 0) + (hasExample ? 1 : 0)), 1), 9)
       })
-      onFinish({ questions, answers: finalAnswers, scores })
+      setTimeout(() => onFinish({ questions, answers: finalAnswers, scores }), 1000)
     }
   }
-
-  const botSpeaking = phase === 'bot'
-  const userListening = phase === 'listening'
 
   return (
     <div style={styles.container}>
 
-      {/* Top bar */}
       <div style={styles.topBar}>
         <div style={styles.roleTag}>{config.role} · {config.level}</div>
         <div style={styles.progressDots}>
@@ -242,12 +263,11 @@ export default function InterviewScreen({ config, onFinish }) {
         </div>
       </div>
 
-      {/* Main orb area */}
       <div style={styles.orbArea}>
 
         {/* Bot orb */}
         <div style={styles.orbWrapper}>
-          {botSpeaking && (
+          {botRings && (
             <>
               <div style={{ ...styles.ring, animation: 'ripple 1.6s ease-out infinite' }} />
               <div style={{ ...styles.ring, animation: 'ripple2 1.6s ease-out infinite 0.4s' }} />
@@ -256,25 +276,23 @@ export default function InterviewScreen({ config, onFinish }) {
           )}
           <div style={{
             ...styles.orb,
-            ...(botSpeaking ? styles.orbSpeaking : {}),
+            ...(botRings ? styles.orbSpeaking : {}),
             ...(isEvaluating ? styles.orbEvaluating : {}),
           }}>
             {isEvaluating ? (
               <div style={styles.spinnerInner} />
             ) : (
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" fill={botSpeaking ? '#fff' : '#7c6aff'} opacity={botSpeaking ? 1 : 0.7} />
-                <circle cx="12" cy="12" r="10" stroke={botSpeaking ? 'rgba(255,255,255,0.3)' : 'rgba(124,106,255,0.3)'} strokeWidth="1" fill="none" />
-                {/* mic icon */}
-                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" fill={botSpeaking ? '#fff' : '#a855f7'} />
-                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z" fill={botSpeaking ? '#fff' : '#7c6aff'} />
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+                <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"
+                  fill={botRings ? '#fff' : '#a855f7'} />
+                <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"
+                  fill={botRings ? '#fff' : '#7c6aff'} />
               </svg>
             )}
           </div>
           <div style={styles.orbLabel}>AI Interviewer</div>
         </div>
 
-        {/* VS divider */}
         <div style={styles.vsDivider}>
           <div style={styles.vsLine} />
           <div style={styles.vsText}>vs</div>
@@ -283,7 +301,7 @@ export default function InterviewScreen({ config, onFinish }) {
 
         {/* User orb */}
         <div style={styles.orbWrapper}>
-          {userListening && (
+          {userRings && (
             <>
               <div style={{ ...styles.ringRed, animation: 'ripple 1.2s ease-out infinite' }} />
               <div style={{ ...styles.ringRed, animation: 'ripple2 1.2s ease-out infinite 0.3s' }} />
@@ -292,35 +310,33 @@ export default function InterviewScreen({ config, onFinish }) {
           <div
             style={{
               ...styles.orbUser,
-              ...(userListening ? styles.orbUserListening : {}),
-              ...(phase === 'ready' ? { cursor: 'pointer' } : {}),
+              ...(userRings ? styles.orbUserListening : {}),
+              cursor: phase === 'ready' ? 'pointer' : 'default',
             }}
-            onClick={toggleMic}
+            onClick={() => { if (phase === 'ready') startListening() }}
           >
             <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
               <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"
-                fill={userListening ? '#fff' : '#9999b0'} />
+                fill={userRings ? '#fff' : '#9999b0'} />
               <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"
-                fill={userListening ? '#fff' : '#6b6b80'} />
+                fill={userRings ? '#fff' : '#6b6b80'} />
             </svg>
           </div>
           <div style={styles.orbLabel}>You</div>
         </div>
       </div>
 
-      {/* Status text */}
-      <div style={styles.statusText}>{statusText}</div>
+      <div style={{ ...styles.statusText, animation: 'fadeIn 0.3s ease' }}>
+        {statusText}
+      </div>
 
-      {/* Transcript */}
-      {(transcript || phase === 'listening') && (
-        <div style={styles.transcriptArea}>
-          <div style={styles.transcriptInner}>
-            {transcript || 'Listening...'}
-          </div>
-        </div>
-      )}
+      {/* Transcript box — sirf tab dikhe jab kuch bol raha ho */}
+     <div style={styles.transcriptArea}>
+  <div style={styles.transcriptInner}>
+    {transcript || <span style={{color: '#3a3a4a', fontStyle: 'italic'}}>Your answer will appear here...</span>}
+  </div>
+</div>
 
-      {/* Action buttons */}
       <div style={styles.actions}>
         {phase === 'ready' && (
           <button style={styles.micBtn} onClick={startListening}>
@@ -344,7 +360,6 @@ export default function InterviewScreen({ config, onFinish }) {
         )}
       </div>
 
-      {/* Question number hint */}
       <div style={styles.qHint}>
         Question {currentQ + 1} of {questions.length}
       </div>
@@ -383,14 +398,13 @@ const styles = {
   },
   dotDone: { background: '#22c55e', border: '1px solid #22c55e' },
   dotActive: { background: '#7c6aff', border: '1px solid #7c6aff' },
-
   orbArea: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '32px',
-    marginTop: '60px',
-    marginBottom: '40px',
+    gap: '40px',
+    marginTop: '80px',
+    marginBottom: '48px',
   },
   orbWrapper: {
     display: 'flex',
@@ -407,7 +421,7 @@ const styles = {
     border: '2px solid rgba(124,106,255,0.5)',
     top: '50%',
     left: '50%',
-    transform: 'translate(-50%, -50%)',
+    pointerEvents: 'none',
     zIndex: 0,
   },
   ringRed: {
@@ -418,7 +432,7 @@ const styles = {
     border: '2px solid rgba(239,68,68,0.5)',
     top: '50%',
     left: '50%',
-    transform: 'translate(-50%, -50%)',
+    pointerEvents: 'none',
     zIndex: 0,
   },
   orb: {
@@ -474,7 +488,6 @@ const styles = {
     fontSize: '12px',
     color: '#6b6b80',
     fontFamily: "'DM Mono', monospace",
-    marginTop: '4px',
   },
   vsDivider: {
     display: 'flex',
@@ -493,16 +506,14 @@ const styles = {
     fontFamily: "'DM Mono', monospace",
     fontWeight: '700',
   },
-
   statusText: {
     fontSize: '15px',
     color: '#9999b0',
     fontFamily: "'DM Mono', monospace",
     marginBottom: '24px',
-    animation: 'fadeIn 0.3s ease',
   },
-
   transcriptArea: {
+    display: 'block',
     width: '100%',
     maxWidth: '460px',
     background: '#111118',
@@ -510,15 +521,15 @@ const styles = {
     borderRadius: '16px',
     padding: '16px',
     marginBottom: '24px',
-    animation: 'fadeIn 0.3s ease',
+    minHeight: '60px',
   },
   transcriptInner: {
+    display: 'block',
     fontSize: '14px',
     color: '#f0f0f8',
     lineHeight: '1.6',
-    fontStyle: 'italic',
+    minHeight: '24px',
   },
-
   actions: {
     display: 'flex',
     gap: '10px',
@@ -567,7 +578,6 @@ const styles = {
     cursor: 'pointer',
     fontFamily: "'Syne', sans-serif",
   },
-
   qHint: {
     fontSize: '11px',
     color: '#3a3a4a',
