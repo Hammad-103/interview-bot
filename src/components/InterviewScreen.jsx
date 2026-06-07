@@ -78,20 +78,21 @@ export default function InterviewScreen({ config, onFinish }) {
     window.speechSynthesis.speak(utt)
   }
 
+  // ✅ FIX 1 — Q1 Q2 hata diya
   function askQuestion(index) {
     if (index >= questions.length) return
     setCurrentQ(index)
     setPhase('bot')
     setStatusText('Interviewer is speaking...')
     setBotRings(true)
-    speakText(`Question ${index + 1}. ${questions[index]}`, () => {
+    speakText(questions[index], () => {
       setBotRings(false)
       setPhase('ready')
       setStatusText('Tap the mic to answer')
     })
   }
 
- function startListening() {
+  function startListening() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SR) {
       setStatusText('Please use Chrome for voice support')
@@ -100,7 +101,7 @@ export default function InterviewScreen({ config, onFinish }) {
 
     let final = ''
     const recognition = new SR()
-    recognition.continuous = false  // ← false kar diya
+    recognition.continuous = false
     recognition.interimResults = true
     recognition.lang = 'en-US'
 
@@ -115,7 +116,6 @@ export default function InterviewScreen({ config, onFinish }) {
     }
 
     recognition.onend = () => {
-      // Agar still listening phase mein hai toh restart karo
       if (recognitionRef.current) {
         recognitionRef.current = null
         const newRec = new SR()
@@ -131,7 +131,7 @@ export default function InterviewScreen({ config, onFinish }) {
     }
 
     recognition.onerror = (e) => {
-      if (e.error === 'no-speech') return  // ignore karo
+      if (e.error === 'no-speech') return
       setStatusText('Mic error — try again')
       stopListening()
     }
@@ -143,9 +143,9 @@ export default function InterviewScreen({ config, onFinish }) {
     setStatusText('Listening... speak your answer')
   }
 
-function stopListening() {
+  function stopListening() {
     const rec = recognitionRef.current
-    recognitionRef.current = null  // ← pehle null karo taake onend restart na kare
+    recognitionRef.current = null
     if (rec) rec.stop()
     setPhase('ready')
     setUserRings(false)
@@ -201,6 +201,19 @@ function stopListening() {
     }
   }
 
+  // ✅ FIX 2 — End Interview function
+  function endInterview() {
+    const rec = recognitionRef.current
+    recognitionRef.current = null
+    if (rec) rec.stop()
+    setUserRings(false)
+    const finalAnswers = [...answers]
+    while (finalAnswers.length < questions.length) {
+      finalAnswers.push('[Skipped]')
+    }
+    finishInterview(finalAnswers)
+  }
+
   async function finishInterview(finalAnswers) {
     window.speechSynthesis.cancel()
     setIsEvaluating(true)
@@ -239,11 +252,10 @@ function stopListening() {
         const keywords = keywordSets[i] || []
         const matched = keywords.filter(k => text.includes(k.toLowerCase())).length
         const keywordScore = Math.min((matched / Math.max(keywords.length * 0.4, 1)) * 5, 5)
-        const lengthScore = words < 5 ? 0 : words < 20 ? 0.5 : words < 40 ? 1 : words < 80 ? 1.5 : 2
+        const lengthScore = 0
         const hasPunctuation = (text.match(/[.!?]/g) || []).length >= 2
         const hasExample = /example|instance|like|such as|for instance|when i|i did|we used|in my/.test(text)
-        return Math.min(Math.max(Math.round(keywordScore + lengthScore + (hasPunctuation ? 1 : 0) + (hasExample ? 1 : 0)), 1), 9)
-      })
+return Math.min(Math.max(Math.round(keywordScore + (hasPunctuation ? 1 : 0) + (hasExample ? 1 : 0)), 1), 9)      })
       setTimeout(() => onFinish({ questions, answers: finalAnswers, scores }), 1000)
     }
   }
@@ -265,7 +277,6 @@ function stopListening() {
 
       <div style={styles.orbArea}>
 
-        {/* Bot orb */}
         <div style={styles.orbWrapper}>
           {botRings && (
             <>
@@ -299,7 +310,6 @@ function stopListening() {
           <div style={styles.vsLine} />
         </div>
 
-        {/* User orb */}
         <div style={styles.orbWrapper}>
           {userRings && (
             <>
@@ -330,12 +340,11 @@ function stopListening() {
         {statusText}
       </div>
 
-      {/* Transcript box — sirf tab dikhe jab kuch bol raha ho */}
-     <div style={styles.transcriptArea}>
-  <div style={styles.transcriptInner}>
-    {transcript || <span style={{color: '#3a3a4a', fontStyle: 'italic'}}>Your answer will appear here...</span>}
-  </div>
-</div>
+      <div style={styles.transcriptArea}>
+        <div style={styles.transcriptInner}>
+          {transcript || <span style={{color: '#3a3a4a', fontStyle: 'italic'}}>Your answer will appear here...</span>}
+        </div>
+      </div>
 
       <div style={styles.actions}>
         {phase === 'ready' && (
@@ -356,6 +365,12 @@ function stopListening() {
         {(phase === 'ready' || phase === 'listening') && (
           <button style={styles.skipBtn} onClick={skipQuestion}>
             Skip
+          </button>
+        )}
+        {/* ✅ FIX 2 — End Interview button, sirf tab jab kam az kam 1 answer diya ho */}
+        {(phase === 'ready' || phase === 'listening') && answers.length > 0 && (
+          <button style={styles.endBtn} onClick={endInterview}>
+            End Interview
           </button>
         )}
       </div>
@@ -534,6 +549,8 @@ const styles = {
     display: 'flex',
     gap: '10px',
     marginBottom: '20px',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
   },
   micBtn: {
     padding: '14px 28px',
@@ -575,6 +592,16 @@ const styles = {
     borderRadius: '100px',
     fontSize: '13px',
     color: '#6b6b80',
+    cursor: 'pointer',
+    fontFamily: "'Syne', sans-serif",
+  },
+  endBtn: {
+    padding: '14px 20px',
+    background: 'transparent',
+    border: '1px solid rgba(239,68,68,0.3)',
+    borderRadius: '100px',
+    fontSize: '13px',
+    color: '#ef4444',
     cursor: 'pointer',
     fontFamily: "'Syne', sans-serif",
   },
