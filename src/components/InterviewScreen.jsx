@@ -4,6 +4,7 @@ import { QUESTIONS, KEYWORDS } from '../data/questions'
 export default function InterviewScreen({ config, onFinish }) {
   const [phase, setPhase] = useState('bot')
   const [currentQ, setCurrentQ] = useState(0)
+  const [currentQuestion, setCurrentQuestion] = useState('') // ✅ NEW
   const [answers, setAnswers] = useState([])
   const [transcript, setTranscript] = useState('')
   const [showSubmit, setShowSubmit] = useState(false)
@@ -78,10 +79,10 @@ export default function InterviewScreen({ config, onFinish }) {
     window.speechSynthesis.speak(utt)
   }
 
-  // ✅ FIX 1 — Q1 Q2 hata diya
   function askQuestion(index) {
     if (index >= questions.length) return
     setCurrentQ(index)
+    setCurrentQuestion(questions[index]) // ✅ NEW
     setPhase('bot')
     setStatusText('Interviewer is speaking...')
     setBotRings(true)
@@ -201,7 +202,6 @@ export default function InterviewScreen({ config, onFinish }) {
     }
   }
 
-  // ✅ FIX 2 — End Interview function
   function endInterview() {
     const rec = recognitionRef.current
     recognitionRef.current = null
@@ -248,14 +248,13 @@ export default function InterviewScreen({ config, onFinish }) {
       const scores = finalAnswers.map((answer, i) => {
         if (answer === '[Skipped]') return 1
         const text = answer.toLowerCase()
-        const words = text.split(/\s+/).length
         const keywords = keywordSets[i] || []
         const matched = keywords.filter(k => text.includes(k.toLowerCase())).length
         const keywordScore = Math.min((matched / Math.max(keywords.length * 0.4, 1)) * 5, 5)
-        const lengthScore = 0
         const hasPunctuation = (text.match(/[.!?]/g) || []).length >= 2
         const hasExample = /example|instance|like|such as|for instance|when i|i did|we used|in my/.test(text)
-return Math.min(Math.max(Math.round(keywordScore + (hasPunctuation ? 1 : 0) + (hasExample ? 1 : 0)), 1), 9)      })
+        return Math.min(Math.max(Math.round(keywordScore + (hasPunctuation ? 1 : 0) + (hasExample ? 1 : 0)), 1), 9)
+      })
       setTimeout(() => onFinish({ questions, answers: finalAnswers, scores }), 1000)
     }
   }
@@ -340,9 +339,18 @@ return Math.min(Math.max(Math.round(keywordScore + (hasPunctuation ? 1 : 0) + (h
         {statusText}
       </div>
 
+      {/* ✅ NEW — Question box */}
+      <div style={styles.questionArea}>
+        <div style={styles.questionLabel}>Question {currentQ + 1}</div>
+        <div style={styles.questionText}>
+          {currentQuestion || <span style={{ color: '#3a3a4a', fontStyle: 'italic' }}>Interviewer is preparing...</span>}
+        </div>
+      </div>
+
+      {/* Answer box */}
       <div style={styles.transcriptArea}>
         <div style={styles.transcriptInner}>
-          {transcript || <span style={{color: '#3a3a4a', fontStyle: 'italic'}}>Your answer will appear here...</span>}
+          {transcript || <span style={{ color: '#3a3a4a', fontStyle: 'italic' }}>Your answer will appear here...</span>}
         </div>
       </div>
 
@@ -367,7 +375,6 @@ return Math.min(Math.max(Math.round(keywordScore + (hasPunctuation ? 1 : 0) + (h
             Skip
           </button>
         )}
-        {/* ✅ FIX 2 — End Interview button, sirf tab jab kam az kam 1 answer diya ho */}
         {(phase === 'ready' || phase === 'listening') && answers.length > 0 && (
           <button style={styles.endBtn} onClick={endInterview}>
             End Interview
@@ -526,6 +533,30 @@ const styles = {
     color: '#9999b0',
     fontFamily: "'DM Mono', monospace",
     marginBottom: '24px',
+  },
+  questionArea: {
+    display: 'block',
+    width: '100%',
+    maxWidth: '460px',
+    background: 'rgba(124,106,255,0.06)',
+    border: '1px solid rgba(124,106,255,0.25)',
+    borderRadius: '16px',
+    padding: '16px',
+    marginBottom: '12px',
+  },
+  questionLabel: {
+    fontSize: '11px',
+    fontFamily: "'DM Mono', monospace",
+    color: '#7c6aff',
+    fontWeight: '700',
+    marginBottom: '8px',
+    textTransform: 'uppercase',
+    letterSpacing: '1px',
+  },
+  questionText: {
+    fontSize: '14px',
+    color: '#f0f0f8',
+    lineHeight: '1.6',
   },
   transcriptArea: {
     display: 'block',
