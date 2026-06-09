@@ -4,7 +4,8 @@ import { QUESTIONS, KEYWORDS } from '../data/questions'
 export default function InterviewScreen({ config, onFinish }) {
   const [phase, setPhase] = useState('bot')
   const [currentQ, setCurrentQ] = useState(0)
-  const [currentQuestion, setCurrentQuestion] = useState('') // ✅ NEW
+  const [currentQuestion, setCurrentQuestion] = useState('')
+  const [displayedQuestion, setDisplayedQuestion] = useState('') // ✅ typing animation
   const [answers, setAnswers] = useState([])
   const [transcript, setTranscript] = useState('')
   const [showSubmit, setShowSubmit] = useState(false)
@@ -13,6 +14,7 @@ export default function InterviewScreen({ config, onFinish }) {
   const [botRings, setBotRings] = useState(false)
   const [userRings, setUserRings] = useState(false)
   const recognitionRef = useRef(null)
+  const typingRef = useRef(null)
   const questions = QUESTIONS[config.role][config.level]
 
   useEffect(() => {
@@ -45,6 +47,10 @@ export default function InterviewScreen({ config, onFinish }) {
         from { opacity: 0; transform: translateY(8px); }
         to { opacity: 1; transform: translateY(0); }
       }
+      @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0; }
+      }
     `
     document.head.appendChild(style)
     return () => document.head.removeChild(style)
@@ -61,6 +67,18 @@ export default function InterviewScreen({ config, onFinish }) {
       })
     }, 800)
   }, [])
+
+  // ✅ Typing animation function
+  function typeQuestion(text) {
+    if (typingRef.current) clearInterval(typingRef.current)
+    setDisplayedQuestion('')
+    let i = 0
+    typingRef.current = setInterval(() => {
+      i++
+      setDisplayedQuestion(text.slice(0, i))
+      if (i >= text.length) clearInterval(typingRef.current)
+    }, 28)
+  }
 
   function speakText(text, onDone) {
     if (!('speechSynthesis' in window)) {
@@ -82,7 +100,8 @@ export default function InterviewScreen({ config, onFinish }) {
   function askQuestion(index) {
     if (index >= questions.length) return
     setCurrentQ(index)
-    setCurrentQuestion(questions[index]) // ✅ NEW
+    setCurrentQuestion(questions[index])
+    typeQuestion(questions[index]) // ✅ typing animation start
     setPhase('bot')
     setStatusText('Interviewer is speaking...')
     setBotRings(true)
@@ -339,15 +358,16 @@ export default function InterviewScreen({ config, onFinish }) {
         {statusText}
       </div>
 
-      {/* ✅ NEW — Question box */}
       <div style={styles.questionArea}>
         <div style={styles.questionLabel}>Question {currentQ + 1}</div>
         <div style={styles.questionText}>
-          {currentQuestion || <span style={{ color: '#3a3a4a', fontStyle: 'italic' }}>Interviewer is preparing...</span>}
+          {displayedQuestion
+            ? <>{displayedQuestion}<span style={{ animation: 'blink 1s infinite', marginLeft: '1px' }}>|</span></>
+            : <span style={{ color: '#3a3a4a', fontStyle: 'italic' }}>Interviewer is preparing...</span>
+          }
         </div>
       </div>
 
-      {/* Answer box */}
       <div style={styles.transcriptArea}>
         <div style={styles.transcriptInner}>
           {transcript || <span style={{ color: '#3a3a4a', fontStyle: 'italic' }}>Your answer will appear here...</span>}

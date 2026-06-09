@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react'
 import { FEEDBACK, TIPS } from '../data/questions'
 
 export default function ReportCard({ results, config, onRetry }) {
@@ -6,12 +7,66 @@ export default function ReportCard({ results, config, onRetry }) {
   const max = questions.length * 9
   const percent = Math.round((total / max) * 100)
   const tips = TIPS[config.role] || []
+  const canvasRef = useRef(null)
 
   const grade =
     percent >= 80 ? { label: 'Excellent', color: '#22c55e' } :
     percent >= 60 ? { label: 'Good', color: '#7c6aff' } :
     percent >= 40 ? { label: 'Average', color: '#f59e0b' } :
     { label: 'Needs Work', color: '#ef4444' }
+
+  // ✅ Confetti — sirf 80%+ pe
+  useEffect(() => {
+    if (percent < 80) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d')
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+
+    const pieces = Array.from({ length: 120 }, () => ({
+      x: Math.random() * canvas.width,
+      y: Math.random() * -canvas.height,
+      w: Math.random() * 10 + 5,
+      h: Math.random() * 6 + 4,
+      color: ['#7c6aff', '#22c55e', '#f59e0b', '#a855f7', '#ef4444', '#60a5fa'][Math.floor(Math.random() * 6)],
+      speed: Math.random() * 3 + 2,
+      angle: Math.random() * 360,
+      spin: Math.random() * 4 - 2,
+    }))
+
+    let frame
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      pieces.forEach(p => {
+        ctx.save()
+        ctx.translate(p.x + p.w / 2, p.y + p.h / 2)
+        ctx.rotate((p.angle * Math.PI) / 180)
+        ctx.fillStyle = p.color
+        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h)
+        ctx.restore()
+        p.y += p.speed
+        p.angle += p.spin
+        if (p.y > canvas.height) {
+          p.y = -20
+          p.x = Math.random() * canvas.width
+        }
+      })
+      frame = requestAnimationFrame(draw)
+    }
+    draw()
+
+    // 4 second baad band karo
+    const timer = setTimeout(() => {
+      cancelAnimationFrame(frame)
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+    }, 4000)
+
+    return () => {
+      cancelAnimationFrame(frame)
+      clearTimeout(timer)
+    }
+  }, [percent])
 
   function getFeedback(score) {
     const pool =
@@ -23,9 +78,11 @@ export default function ReportCard({ results, config, onRetry }) {
 
   return (
     <div style={styles.container}>
+      {/* ✅ Confetti canvas */}
+      <canvas ref={canvasRef} style={styles.canvas} />
+
       <div style={styles.card}>
 
-        {/* Header */}
         <div style={styles.topBadge}>
           <span style={styles.dot}></span>
           Interview Complete
@@ -34,7 +91,6 @@ export default function ReportCard({ results, config, onRetry }) {
         <h2 style={styles.heading}>Your Report Card</h2>
         <p style={styles.sub}>{config.role} · {config.level} Level</p>
 
-        {/* Score */}
         <div style={styles.scoreBox}>
           <div style={{ ...styles.scoreNum, color: grade.color }}>
             {percent}%
@@ -47,7 +103,6 @@ export default function ReportCard({ results, config, onRetry }) {
           </div>
         </div>
 
-        {/* Q&A Breakdown */}
         <div style={styles.section}>
           <div style={styles.sectionTitle}>Question Breakdown</div>
           {questions.map((q, i) => (
@@ -83,7 +138,6 @@ export default function ReportCard({ results, config, onRetry }) {
           ))}
         </div>
 
-        {/* Tips */}
         {tips.length > 0 && (
           <div style={styles.section}>
             <div style={styles.sectionTitle}>Improvement Tips</div>
@@ -96,7 +150,6 @@ export default function ReportCard({ results, config, onRetry }) {
           </div>
         )}
 
-        {/* Actions */}
         <div style={styles.actions}>
           <button style={styles.retryBtn} onClick={onRetry}>
             Try Another Role
@@ -124,6 +177,15 @@ const styles = {
     justifyContent: 'center',
     padding: '40px 24px',
     background: '#0a0a0f',
+    position: 'relative',
+  },
+  canvas: {
+    position: 'fixed',
+    top: 0, left: 0,
+    width: '100%',
+    height: '100%',
+    pointerEvents: 'none',
+    zIndex: 99,
   },
   card: {
     width: '100%',
@@ -131,6 +193,8 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '12px',
+    position: 'relative',
+    zIndex: 100,
   },
   topBadge: {
     display: 'inline-flex',
