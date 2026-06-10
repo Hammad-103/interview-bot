@@ -1,13 +1,17 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { FEEDBACK, TIPS } from '../data/questions'
 
-export default function ReportCard({ results, config, onRetry }) {
+export default function ReportCard({ results, config, onRetry, onRetrySameRole }) {
   const { questions, answers, scores } = results
   const total = scores.reduce((a, b) => a + b, 0)
   const max = questions.length * 9
   const percent = Math.round((total / max) * 100)
   const tips = TIPS[config.role] || []
   const canvasRef = useRef(null)
+  
+  // ✅ Score history state
+  const [bestScore, setBestScore] = useState(null)
+  const [previousScores, setPreviousScores] = useState([])
 
   const grade =
     percent >= 80 ? { label: 'Excellent', color: '#22c55e' } :
@@ -15,7 +19,30 @@ export default function ReportCard({ results, config, onRetry }) {
     percent >= 40 ? { label: 'Average', color: '#f59e0b' } :
     { label: 'Needs Work', color: '#ef4444' }
 
-  // ✅ Confetti — sirf 80%+ pe
+  // ✅ Load and save score history
+  useEffect(() => {
+    const key = `interview_history_${config.role}_${config.level}`
+    const history = JSON.parse(localStorage.getItem(key) || '[]')
+    
+    // Save current score
+    const newEntry = {
+      date: new Date().toISOString(),
+      score: percent,
+      total: total,
+      max: max,
+      timestamp: Date.now()
+    }
+    
+    const updatedHistory = [newEntry, ...history].slice(0, 10) // Last 10 scores
+    localStorage.setItem(key, JSON.stringify(updatedHistory))
+    
+    // Calculate best score
+    const best = Math.max(...updatedHistory.map(h => h.score), 0)
+    setBestScore(best)
+    setPreviousScores(updatedHistory.slice(0, 5)) // Last 5 for display
+  }, [percent, total, max, config.role, config.level])
+
+  // Confetti — sirf 80%+ pe
   useEffect(() => {
     if (percent < 80) return
     const canvas = canvasRef.current
@@ -56,7 +83,6 @@ export default function ReportCard({ results, config, onRetry }) {
     }
     draw()
 
-    // 4 second baad band karo
     const timer = setTimeout(() => {
       cancelAnimationFrame(frame)
       ctx.clearRect(0, 0, canvas.width, canvas.height)
@@ -78,11 +104,9 @@ export default function ReportCard({ results, config, onRetry }) {
 
   return (
     <div style={styles.container}>
-      {/* ✅ Confetti canvas */}
       <canvas ref={canvasRef} style={styles.canvas} />
 
       <div style={styles.card}>
-
         <div style={styles.topBadge}>
           <span style={styles.dot}></span>
           Interview Complete
@@ -90,6 +114,17 @@ export default function ReportCard({ results, config, onRetry }) {
 
         <h2 style={styles.heading}>Your Report Card</h2>
         <p style={styles.sub}>{config.role} · {config.level} Level</p>
+
+        {/* ✅ Best score display */}
+        {bestScore !== null && bestScore > 0 && (
+          <div style={styles.bestScoreBox}>
+            <span style={styles.trophyIcon}>🏆</span>
+            <div>
+              <div style={styles.bestLabel}>Your Best Score</div>
+              <div style={styles.bestValue}>{bestScore}%</div>
+            </div>
+          </div>
+        )}
 
         <div style={styles.scoreBox}>
           <div style={{ ...styles.scoreNum, color: grade.color }}>
@@ -102,6 +137,29 @@ export default function ReportCard({ results, config, onRetry }) {
             {total} / {max} points across {questions.length} questions
           </div>
         </div>
+
+        {/* ✅ Previous scores history */}
+        {previousScores.length > 1 && (
+          <div style={styles.historyBox}>
+            <div style={styles.historyTitle}>Previous Attempts</div>
+            <div style={styles.historyList}>
+              {previousScores.slice(1).map((entry, idx) => (
+                <div key={idx} style={styles.historyItem}>
+                  <span style={styles.historyDate}>
+                    {new Date(entry.date).toLocaleDateString()}
+                  </span>
+                  <span style={{
+                    ...styles.historyScore,
+                    color: entry.score >= 80 ? '#22c55e' : 
+                           entry.score >= 60 ? '#7c6aff' : '#f59e0b'
+                  }}>
+                    {entry.score}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div style={styles.section}>
           <div style={styles.sectionTitle}>Question Breakdown</div>
@@ -153,6 +211,9 @@ export default function ReportCard({ results, config, onRetry }) {
         <div style={styles.actions}>
           <button style={styles.retryBtn} onClick={onRetry}>
             Try Another Role
+          </button>
+          <button style={styles.retrySameBtn} onClick={onRetrySameRole}>
+            🔄 Try Again (Same Role)
           </button>
           <button style={styles.copyBtn} onClick={() => {
             const text = questions.map((q, i) =>
@@ -224,6 +285,19 @@ const styles = {
     fontFamily: "'DM Mono', monospace",
     marginBottom: '8px',
   },
+  bestScoreBox: {
+    background: 'linear-gradient(135deg, #f59e0b22, #f59e0b08)',
+    border: '1px solid rgba(245,158,11,0.3)',
+    borderRadius: '12px',
+    padding: '12px 16px',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginBottom: '8px',
+  },
+  trophyIcon: { fontSize: '28px' },
+  bestLabel: { fontSize: '11px', color: '#f59e0b', fontFamily: "'DM Mono', monospace" },
+  bestValue: { fontSize: '20px', fontWeight: '800', color: '#f59e0b', lineHeight: '1.2' },
   scoreBox: {
     background: '#111118',
     border: '1px solid rgba(255,255,255,0.07)',
@@ -245,6 +319,30 @@ const styles = {
     fontFamily: "'DM Mono', monospace",
   },
   scoreDesc: { fontSize: '12px', color: '#6b6b80', marginTop: '4px' },
+  historyBox: {
+    background: '#0f0f14',
+    border: '1px solid rgba(255,255,255,0.05)',
+    borderRadius: '12px',
+    padding: '12px 16px',
+    marginBottom: '8px',
+  },
+  historyTitle: {
+    fontSize: '10px',
+    color: '#6b6b80',
+    fontFamily: "'DM Mono', monospace",
+    marginBottom: '8px',
+    textTransform: 'uppercase',
+    letterSpacing: '1px',
+  },
+  historyList: { display: 'flex', flexDirection: 'column', gap: '6px' },
+  historyItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    fontSize: '12px',
+  },
+  historyDate: { color: '#6b6b80', fontFamily: "'DM Mono', monospace" },
+  historyScore: { fontWeight: '700', fontFamily: "'DM Mono', monospace" },
   section: {
     background: '#111118',
     border: '1px solid rgba(255,255,255,0.07)',
@@ -297,12 +395,24 @@ const styles = {
     fontSize: '13px', color: '#9999b0', lineHeight: '1.5',
   },
   tipIcon: { color: '#7c6aff', flexShrink: 0, fontWeight: '700' },
-  actions: { display: 'flex', gap: '10px', marginTop: '8px', paddingBottom: '40px' },
+  actions: { 
+    display: 'flex', 
+    gap: '10px', 
+    marginTop: '8px', 
+    paddingBottom: '40px',
+    flexWrap: 'wrap',
+  },
   retryBtn: {
     flex: 1, padding: '14px',
     background: '#7c6aff', border: 'none',
     borderRadius: '12px', fontSize: '14px',
     fontWeight: '700', color: '#fff', cursor: 'pointer',
+  },
+  retrySameBtn: {
+    flex: 1, padding: '14px',
+    background: '#1a1a24', border: '1px solid rgba(124,106,255,0.3)',
+    borderRadius: '12px', fontSize: '13px',
+    fontWeight: '600', color: '#7c6aff', cursor: 'pointer',
   },
   copyBtn: {
     padding: '14px 20px',
