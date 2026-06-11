@@ -9,7 +9,6 @@ export default function ReportCard({ results, config, onRetry, onRetrySameRole }
   const tips = TIPS[config.role] || []
   const canvasRef = useRef(null)
   
-  // ✅ Score history state
   const [bestScore, setBestScore] = useState(null)
   const [previousScores, setPreviousScores] = useState([])
 
@@ -19,12 +18,9 @@ export default function ReportCard({ results, config, onRetry, onRetrySameRole }
     percent >= 40 ? { label: 'Average', color: '#f59e0b' } :
     { label: 'Needs Work', color: '#ef4444' }
 
-  // ✅ Load and save score history
   useEffect(() => {
     const key = `interview_history_${config.role}_${config.level}`
     const history = JSON.parse(localStorage.getItem(key) || '[]')
-    
-    // Save current score
     const newEntry = {
       date: new Date().toISOString(),
       score: percent,
@@ -32,17 +28,13 @@ export default function ReportCard({ results, config, onRetry, onRetrySameRole }
       max: max,
       timestamp: Date.now()
     }
-    
-    const updatedHistory = [newEntry, ...history].slice(0, 10) // Last 10 scores
+    const updatedHistory = [newEntry, ...history].slice(0, 10)
     localStorage.setItem(key, JSON.stringify(updatedHistory))
-    
-    // Calculate best score
     const best = Math.max(...updatedHistory.map(h => h.score), 0)
     setBestScore(best)
-    setPreviousScores(updatedHistory.slice(0, 5)) // Last 5 for display
+    setPreviousScores(updatedHistory.slice(0, 5))
   }, [percent, total, max, config.role, config.level])
 
-  // Confetti — sirf 80%+ pe
   useEffect(() => {
     if (percent < 80) return
     const canvas = canvasRef.current
@@ -115,7 +107,6 @@ export default function ReportCard({ results, config, onRetry, onRetrySameRole }
         <h2 style={styles.heading}>Your Report Card</h2>
         <p style={styles.sub}>{config.role} · {config.level} Level</p>
 
-        {/* ✅ Best score display */}
         {bestScore !== null && bestScore > 0 && (
           <div style={styles.bestScoreBox}>
             <span style={styles.trophyIcon}>🏆</span>
@@ -138,7 +129,6 @@ export default function ReportCard({ results, config, onRetry, onRetrySameRole }
           </div>
         </div>
 
-        {/* ✅ Previous scores history */}
         {previousScores.length > 1 && (
           <div style={styles.historyBox}>
             <div style={styles.historyTitle}>Previous Attempts</div>
@@ -223,6 +213,18 @@ export default function ReportCard({ results, config, onRetry, onRetrySameRole }
               .then(() => alert('Results copied to clipboard!'))
           }}>
             Copy Results
+          </button>
+          {/* ✅ Share button */}
+          <button style={styles.shareBtn} onClick={() => {
+            const text = `🎯 I just completed an AI Interview!\n\nRole: ${config.role}\nLevel: ${config.level}\nScore: ${percent}% (${grade.label})\n\nTry it yourself: https://interview-bot-ivory-six.vercel.app`
+            if (navigator.share) {
+              navigator.share({ title: 'Interview Bot Result', text })
+            } else {
+              navigator.clipboard.writeText(text)
+                .then(() => alert('Result copied! Paste it anywhere to share.'))
+            }
+          }}>
+            Share 🚀
           </button>
         </div>
 
@@ -395,10 +397,10 @@ const styles = {
     fontSize: '13px', color: '#9999b0', lineHeight: '1.5',
   },
   tipIcon: { color: '#7c6aff', flexShrink: 0, fontWeight: '700' },
-  actions: { 
-    display: 'flex', 
-    gap: '10px', 
-    marginTop: '8px', 
+  actions: {
+    display: 'flex',
+    gap: '10px',
+    marginTop: '8px',
     paddingBottom: '40px',
     flexWrap: 'wrap',
   },
@@ -420,5 +422,16 @@ const styles = {
     border: '1px solid rgba(255,255,255,0.07)',
     borderRadius: '12px', fontSize: '13px',
     color: '#9999b0', cursor: 'pointer',
+  },
+  // ✅ Share button style
+  shareBtn: {
+    padding: '14px 20px',
+    background: 'linear-gradient(135deg, #7c6aff, #a855f7)',
+    border: 'none',
+    borderRadius: '12px',
+    fontSize: '13px',
+    color: '#fff',
+    fontWeight: '700',
+    cursor: 'pointer',
   },
 }
