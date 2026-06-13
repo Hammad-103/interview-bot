@@ -5,14 +5,13 @@ export default function InterviewScreen({ config, onFinish }) {
   const [phase, setPhase] = useState('bot')
   const [currentQ, setCurrentQ] = useState(0)
   const [currentQuestion, setCurrentQuestion] = useState('')
-  const [displayedQuestion, setDisplayedQuestion] = useState('') // ✅ typing animation
+  const [displayedQuestion, setDisplayedQuestion] = useState('')
   const [answers, setAnswers] = useState([])
   const [transcript, setTranscript] = useState('')
   const [showSubmit, setShowSubmit] = useState(false)
   const [statusText, setStatusText] = useState('Interviewer is joining...')
   const [isEvaluating, setIsEvaluating] = useState(false)
-  const [botRings, setBotRings] = useState(false)
-  const [userRings, setUserRings] = useState(false)
+  const [botSpeaking, setBotSpeaking] = useState(false)
   const recognitionRef = useRef(null)
   const typingRef = useRef(null)
   const questions = QUESTIONS[config.role][config.level]
@@ -20,25 +19,19 @@ export default function InterviewScreen({ config, onFinish }) {
   useEffect(() => {
     const style = document.createElement('style')
     style.innerHTML = `
-      @keyframes ripple {
-        0% { transform: translate(-50%, -50%) scale(1); opacity: 0.6; }
-        100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+      @keyframes orbGlow {
+        0%, 100% { 
+          box-shadow: 0 0 40px rgba(124,106,255,0.5), 0 0 80px rgba(124,106,255,0.2);
+          transform: scale(1);
+        }
+        50% { 
+          box-shadow: 0 0 80px rgba(124,106,255,0.8), 0 0 140px rgba(168,85,247,0.4);
+          transform: scale(1.04);
+        }
       }
-      @keyframes ripple2 {
-        0% { transform: translate(-50%, -50%) scale(1); opacity: 0.4; }
-        100% { transform: translate(-50%, -50%) scale(1.8); opacity: 0; }
-      }
-      @keyframes ripple3 {
-        0% { transform: translate(-50%, -50%) scale(1); opacity: 0.3; }
-        100% { transform: translate(-50%, -50%) scale(2.6); opacity: 0; }
-      }
-      @keyframes pulse {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.06); }
-      }
-      @keyframes userPulse {
-        0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
-        50% { transform: scale(1.04); box-shadow: 0 0 0 20px rgba(239,68,68,0); }
+      @keyframes orbIdle {
+        0%, 100% { box-shadow: 0 0 20px rgba(124,106,255,0.2); }
+        50% { box-shadow: 0 0 30px rgba(124,106,255,0.3); }
       }
       @keyframes spin {
         to { transform: rotate(360deg); }
@@ -60,15 +53,14 @@ export default function InterviewScreen({ config, onFinish }) {
     setTimeout(() => {
       const introText = "Hi! I'm your AI interviewer. I'll ask you 5 questions — take your time with each answer. Ready?"
       setStatusText('Interviewer is speaking...')
-      setBotRings(true)
+      setBotSpeaking(true)
       speakText(introText, () => {
-        setBotRings(false)
+        setBotSpeaking(false)
         setTimeout(() => askQuestion(0), 500)
       })
     }, 800)
   }, [])
 
-  // ✅ Typing animation function
   function typeQuestion(text) {
     if (typingRef.current) clearInterval(typingRef.current)
     setDisplayedQuestion('')
@@ -77,7 +69,7 @@ export default function InterviewScreen({ config, onFinish }) {
       i++
       setDisplayedQuestion(text.slice(0, i))
       if (i >= text.length) clearInterval(typingRef.current)
-    }, 28)
+    }, 50)
   }
 
   function speakText(text, onDone) {
@@ -101,17 +93,23 @@ export default function InterviewScreen({ config, onFinish }) {
     if (index >= questions.length) return
     setCurrentQ(index)
     setCurrentQuestion(questions[index])
-    typeQuestion(questions[index]) // ✅ typing animation start
+    setDisplayedQuestion('') // ← pehle clear karo
     setPhase('bot')
     setStatusText('Interviewer is speaking...')
-    setBotRings(true)
-    speakText(questions[index], () => {
-      setBotRings(false)
+    setBotSpeaking(true)
+
+    const q = questions[index]
+
+    // Speech aur typing saath shuru
+    speakText(q, () => {
+      setBotSpeaking(false)
       setPhase('ready')
       setStatusText('Tap the mic to answer')
     })
-  }
 
+    // Typing thodi der baad shuru — jab bot bolna start kare
+    setTimeout(() => typeQuestion(q), 1500)
+  }
   function startListening() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SR) {
@@ -159,7 +157,6 @@ export default function InterviewScreen({ config, onFinish }) {
     recognition.start()
     recognitionRef.current = recognition
     setPhase('listening')
-    setUserRings(true)
     setStatusText('Listening... speak your answer')
   }
 
@@ -168,7 +165,6 @@ export default function InterviewScreen({ config, onFinish }) {
     recognitionRef.current = null
     if (rec) rec.stop()
     setPhase('ready')
-    setUserRings(false)
     setStatusText('Tap submit or speak again')
   }
 
@@ -177,7 +173,6 @@ export default function InterviewScreen({ config, onFinish }) {
       recognitionRef.current.stop()
       recognitionRef.current = null
     }
-    setUserRings(false)
     const ans = transcript.trim()
     if (!ans) { skipQuestion(); return }
     setTranscript('')
@@ -188,10 +183,10 @@ export default function InterviewScreen({ config, onFinish }) {
     if (next < questions.length) {
       setPhase('bot')
       setStatusText('Interviewer is speaking...')
-      setBotRings(true)
+      setBotSpeaking(true)
       const acks = ['Got it. Next question.', 'Interesting. Moving on.', 'Thank you. Here is the next one.', 'Noted. Let us continue.']
       speakText(acks[Math.floor(Math.random() * acks.length)], () => {
-        setBotRings(false)
+        setBotSpeaking(false)
         setTimeout(() => askQuestion(next), 400)
       })
     } else {
@@ -210,7 +205,6 @@ export default function InterviewScreen({ config, onFinish }) {
     }
     setTranscript('')
     setShowSubmit(false)
-    setUserRings(false)
     const newAnswers = [...answers, '[Skipped]']
     setAnswers(newAnswers)
     const next = currentQ + 1
@@ -225,7 +219,6 @@ export default function InterviewScreen({ config, onFinish }) {
     const rec = recognitionRef.current
     recognitionRef.current = null
     if (rec) rec.stop()
-    setUserRings(false)
     const finalAnswers = [...answers]
     while (finalAnswers.length < questions.length) {
       finalAnswers.push('[Skipped]')
@@ -237,8 +230,7 @@ export default function InterviewScreen({ config, onFinish }) {
     window.speechSynthesis.cancel()
     setIsEvaluating(true)
     setPhase('evaluating')
-    setBotRings(false)
-    setUserRings(false)
+    setBotSpeaking(false)
     setStatusText('AI is analyzing your answers...')
 
     const qa = questions.map((q, i) => ({ q, a: finalAnswers[i] }))
@@ -293,64 +285,26 @@ export default function InterviewScreen({ config, onFinish }) {
         </div>
       </div>
 
+      {/* ✅ Sirf ek bada orb — center mein */}
       <div style={styles.orbArea}>
-
         <div style={styles.orbWrapper}>
-          {botRings && (
-            <>
-              <div style={{ ...styles.ring, animation: 'ripple 1.6s ease-out infinite' }} />
-              <div style={{ ...styles.ring, animation: 'ripple2 1.6s ease-out infinite 0.4s' }} />
-              <div style={{ ...styles.ring, animation: 'ripple3 1.6s ease-out infinite 0.8s' }} />
-            </>
-          )}
           <div style={{
             ...styles.orb,
-            ...(botRings ? styles.orbSpeaking : {}),
+            ...(botSpeaking ? styles.orbSpeaking : styles.orbIdle),
             ...(isEvaluating ? styles.orbEvaluating : {}),
           }}>
             {isEvaluating ? (
               <div style={styles.spinnerInner} />
             ) : (
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+              <svg width="52" height="52" viewBox="0 0 24 24" fill="none">
                 <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"
-                  fill={botRings ? '#fff' : '#a855f7'} />
+                  fill={botSpeaking ? '#fff' : '#a855f7'} />
                 <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"
-                  fill={botRings ? '#fff' : '#7c6aff'} />
+                  fill={botSpeaking ? '#fff' : '#7c6aff'} />
               </svg>
             )}
           </div>
           <div style={styles.orbLabel}>AI Interviewer</div>
-        </div>
-
-        <div style={styles.vsDivider}>
-          <div style={styles.vsLine} />
-          <div style={styles.vsText}>vs</div>
-          <div style={styles.vsLine} />
-        </div>
-
-        <div style={styles.orbWrapper}>
-          {userRings && (
-            <>
-              <div style={{ ...styles.ringRed, animation: 'ripple 1.2s ease-out infinite' }} />
-              <div style={{ ...styles.ringRed, animation: 'ripple2 1.2s ease-out infinite 0.3s' }} />
-            </>
-          )}
-          <div
-            style={{
-              ...styles.orbUser,
-              ...(userRings ? styles.orbUserListening : {}),
-              cursor: phase === 'ready' ? 'pointer' : 'default',
-            }}
-            onClick={() => { if (phase === 'ready') startListening() }}
-          >
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
-              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"
-                fill={userRings ? '#fff' : '#9999b0'} />
-              <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"
-                fill={userRings ? '#fff' : '#6b6b80'} />
-            </svg>
-          </div>
-          <div style={styles.orbLabel}>You</div>
         </div>
       </div>
 
@@ -444,42 +398,19 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '40px',
-    marginTop: '80px',
-    marginBottom: '48px',
+    marginTop: '50px',
+    marginBottom: '40px',
   },
   orbWrapper: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: '14px',
+    gap: '16px',
     position: 'relative',
   },
-  ring: {
-    position: 'absolute',
-    width: '110px',
-    height: '110px',
-    borderRadius: '50%',
-    border: '2px solid rgba(124,106,255,0.5)',
-    top: '50%',
-    left: '50%',
-    pointerEvents: 'none',
-    zIndex: 0,
-  },
-  ringRed: {
-    position: 'absolute',
-    width: '110px',
-    height: '110px',
-    borderRadius: '50%',
-    border: '2px solid rgba(239,68,68,0.5)',
-    top: '50%',
-    left: '50%',
-    pointerEvents: 'none',
-    zIndex: 0,
-  },
   orb: {
-    width: '110px',
-    height: '110px',
+    width: '160px',
+    height: '160px',
     borderRadius: '50%',
     background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
     border: '2px solid rgba(124,106,255,0.3)',
@@ -488,65 +419,32 @@ const styles = {
     justifyContent: 'center',
     position: 'relative',
     zIndex: 1,
-    transition: 'all 0.3s',
+    transition: 'all 0.4s ease',
+  },
+  orbIdle: {
+    animation: 'orbIdle 3s ease-in-out infinite',
   },
   orbSpeaking: {
     background: 'linear-gradient(135deg, #7c6aff, #a855f7)',
-    border: '2px solid rgba(255,255,255,0.2)',
-    animation: 'pulse 1.5s ease-in-out infinite',
-    boxShadow: '0 0 40px rgba(124,106,255,0.4)',
+    border: '2px solid rgba(255,255,255,0.3)',
+    animation: 'orbGlow 1.2s ease-in-out infinite',
   },
   orbEvaluating: {
     background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
     border: '2px solid rgba(124,106,255,0.5)',
+    animation: 'orbIdle 3s ease-in-out infinite',
   },
   spinnerInner: {
-    width: '32px', height: '32px',
+    width: '40px', height: '40px',
     border: '3px solid rgba(124,106,255,0.2)',
     borderTop: '3px solid #7c6aff',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite',
   },
-  orbUser: {
-    width: '110px',
-    height: '110px',
-    borderRadius: '50%',
-    background: '#111118',
-    border: '2px solid rgba(255,255,255,0.07)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    zIndex: 1,
-    transition: 'all 0.3s',
-  },
-  orbUserListening: {
-    background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-    border: '2px solid rgba(255,255,255,0.2)',
-    animation: 'userPulse 1s ease-in-out infinite',
-    boxShadow: '0 0 40px rgba(239,68,68,0.4)',
-  },
   orbLabel: {
     fontSize: '12px',
     color: '#6b6b80',
     fontFamily: "'DM Mono', monospace",
-  },
-  vsDivider: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: '6px',
-  },
-  vsLine: {
-    width: '1px',
-    height: '30px',
-    background: 'rgba(255,255,255,0.07)',
-  },
-  vsText: {
-    fontSize: '11px',
-    color: '#3a3a4a',
-    fontFamily: "'DM Mono', monospace",
-    fontWeight: '700',
   },
   statusText: {
     fontSize: '15px',
