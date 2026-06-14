@@ -21,17 +21,21 @@ export default function InterviewScreen({ config, onFinish }) {
     style.innerHTML = `
       @keyframes orbGlow {
         0%, 100% { 
-          box-shadow: 0 0 40px rgba(124,106,255,0.5), 0 0 80px rgba(124,106,255,0.2);
+          box-shadow: 0 0 60px rgba(124,106,255,0.6), 0 0 120px rgba(124,106,255,0.2);
           transform: scale(1);
         }
         50% { 
-          box-shadow: 0 0 80px rgba(124,106,255,0.8), 0 0 140px rgba(168,85,247,0.4);
-          transform: scale(1.04);
+          box-shadow: 0 0 100px rgba(124,106,255,0.9), 0 0 180px rgba(168,85,247,0.5);
+          transform: scale(1.05);
         }
       }
       @keyframes orbIdle {
-        0%, 100% { box-shadow: 0 0 20px rgba(124,106,255,0.2); }
-        50% { box-shadow: 0 0 30px rgba(124,106,255,0.3); }
+        0%, 100% { box-shadow: 0 0 30px rgba(124,106,255,0.25); }
+        50% { box-shadow: 0 0 50px rgba(124,106,255,0.35); }
+      }
+      @keyframes ringRotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
       }
       @keyframes spin {
         to { transform: rotate(360deg); }
@@ -43,6 +47,10 @@ export default function InterviewScreen({ config, onFinish }) {
       @keyframes blink {
         0%, 100% { opacity: 1; }
         50% { opacity: 0; }
+      }
+      @keyframes listeningPulse {
+        0%, 100% { box-shadow: 0 0 30px rgba(124,106,255,0.3); }
+        50% { box-shadow: 0 0 60px rgba(124,106,255,0.5); }
       }
     `
     document.head.appendChild(style)
@@ -93,30 +101,25 @@ export default function InterviewScreen({ config, onFinish }) {
     if (index >= questions.length) return
     setCurrentQ(index)
     setCurrentQuestion(questions[index])
-    setDisplayedQuestion('') // ← pehle clear karo
+    setDisplayedQuestion('')
     setPhase('bot')
-    setStatusText('Interviewer is speaking...')
+    setStatusText('SPEAKING')
     setBotSpeaking(true)
-
     const q = questions[index]
-
-    // Speech aur typing saath shuru
     speakText(q, () => {
       setBotSpeaking(false)
       setPhase('ready')
-      setStatusText('Tap the mic to answer')
+      setStatusText('READY')
     })
-
-    // Typing thodi der baad shuru — jab bot bolna start kare
     setTimeout(() => typeQuestion(q), 1500)
   }
+
   function startListening() {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition
     if (!SR) {
-      setStatusText('Please use Chrome for voice support')
+      setStatusText('USE CHROME')
       return
     }
-
     let final = ''
     const recognition = new SR()
     recognition.continuous = false
@@ -150,14 +153,13 @@ export default function InterviewScreen({ config, onFinish }) {
 
     recognition.onerror = (e) => {
       if (e.error === 'no-speech') return
-      setStatusText('Mic error — try again')
       stopListening()
     }
 
     recognition.start()
     recognitionRef.current = recognition
     setPhase('listening')
-    setStatusText('Listening... speak your answer')
+    setStatusText('LISTENING')
   }
 
   function stopListening() {
@@ -165,7 +167,7 @@ export default function InterviewScreen({ config, onFinish }) {
     recognitionRef.current = null
     if (rec) rec.stop()
     setPhase('ready')
-    setStatusText('Tap submit or speak again')
+    setStatusText('READY')
   }
 
   function submitAnswer() {
@@ -182,7 +184,7 @@ export default function InterviewScreen({ config, onFinish }) {
     const next = currentQ + 1
     if (next < questions.length) {
       setPhase('bot')
-      setStatusText('Interviewer is speaking...')
+      setStatusText('SPEAKING')
       setBotSpeaking(true)
       const acks = ['Got it. Next question.', 'Interesting. Moving on.', 'Thank you. Here is the next one.', 'Noted. Let us continue.']
       speakText(acks[Math.floor(Math.random() * acks.length)], () => {
@@ -191,7 +193,7 @@ export default function InterviewScreen({ config, onFinish }) {
       })
     } else {
       setPhase('evaluating')
-      setStatusText('Evaluating your answers...')
+      setStatusText('EVALUATING')
       speakText('That is all 5 questions. Evaluating your answers now.', () => {
         finishInterview(newAnswers)
       })
@@ -231,10 +233,10 @@ export default function InterviewScreen({ config, onFinish }) {
     setIsEvaluating(true)
     setPhase('evaluating')
     setBotSpeaking(false)
-    setStatusText('AI is analyzing your answers...')
+    setStatusText('EVALUATING')
 
     const qa = questions.map((q, i) => ({ q, a: finalAnswers[i] }))
-    const prompt = `You are a strict but fair interviewer evaluating a ${config.level} ${config.role} candidate. Rate each answer from 1-9. Questions and answers: ${qa.map((x, i) => `Q${i+1}: ${x.q}\nAnswer: ${x.a}`).join('\n\n')}. Respond ONLY with a JSON array like [7,4,8,3,6] nothing else.`
+    const prompt = `You are a strict but fair interviewer evaluating a ${config.level} ${config.role} candidate. Rate each answer from 1-9. If the answer is '[Skipped]' or empty, give it 0. Questions and answers: ${qa.map((x, i) => `Q${i+1}: ${x.q}\nAnswer: ${x.a}`).join('\n\n')}. Respond ONLY with a JSON array like [7,4,8,3,6] nothing else.`
 
     try {
       const response = await fetch("https://api.anthropic.com/v1/messages", {
@@ -257,14 +259,14 @@ export default function InterviewScreen({ config, onFinish }) {
     } catch (err) {
       const keywordSets = KEYWORDS[config.role][config.level]
       const scores = finalAnswers.map((answer, i) => {
-        if (answer === '[Skipped]') return 1
+        if (answer === '[Skipped]') return 0
         const text = answer.toLowerCase()
         const keywords = keywordSets[i] || []
         const matched = keywords.filter(k => text.includes(k.toLowerCase())).length
         const keywordScore = Math.min((matched / Math.max(keywords.length * 0.4, 1)) * 5, 5)
         const hasPunctuation = (text.match(/[.!?]/g) || []).length >= 2
         const hasExample = /example|instance|like|such as|for instance|when i|i did|we used|in my/.test(text)
-        return Math.min(Math.max(Math.round(keywordScore + (hasPunctuation ? 1 : 0) + (hasExample ? 1 : 0)), 1), 9)
+        return Math.min(Math.max(Math.round(keywordScore + (hasPunctuation ? 1 : 0) + (hasExample ? 1 : 0)), 0), 9)
       })
       setTimeout(() => onFinish({ questions, answers: finalAnswers, scores }), 1000)
     }
@@ -273,6 +275,7 @@ export default function InterviewScreen({ config, onFinish }) {
   return (
     <div style={styles.container}>
 
+      {/* Top bar */}
       <div style={styles.topBar}>
         <div style={styles.roleTag}>{config.role} · {config.level}</div>
         <div style={styles.progressDots}>
@@ -285,12 +288,21 @@ export default function InterviewScreen({ config, onFinish }) {
         </div>
       </div>
 
-      {/* ✅ Sirf ek bada orb — center mein */}
+      {/* Orb area */}
       <div style={styles.orbArea}>
         <div style={styles.orbWrapper}>
+
+          {/* Outer decorative ring */}
+          <div style={{
+            ...styles.outerRing,
+            ...(botSpeaking ? styles.outerRingSpeaking : {}),
+          }} />
+
+          {/* Orb */}
           <div style={{
             ...styles.orb,
             ...(botSpeaking ? styles.orbSpeaking : styles.orbIdle),
+            ...(phase === 'listening' ? styles.orbListening : {}),
             ...(isEvaluating ? styles.orbEvaluating : {}),
           }}>
             {isEvaluating ? (
@@ -298,66 +310,66 @@ export default function InterviewScreen({ config, onFinish }) {
             ) : (
               <svg width="52" height="52" viewBox="0 0 24 24" fill="none">
                 <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"
-                  fill={botSpeaking ? '#fff' : '#a855f7'} />
+                  fill="#fff" opacity={botSpeaking || phase === 'listening' ? 1 : 0.6} />
                 <path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"
-                  fill={botSpeaking ? '#fff' : '#7c6aff'} />
+                  fill="#fff" opacity={botSpeaking || phase === 'listening' ? 1 : 0.6} />
               </svg>
             )}
           </div>
-          <div style={styles.orbLabel}>AI Interviewer</div>
+
+          {/* Status label under orb */}
+          <div style={styles.statusBadge}>
+            {statusText}
+          </div>
         </div>
       </div>
 
-      <div style={{ ...styles.statusText, animation: 'fadeIn 0.3s ease' }}>
-        {statusText}
-      </div>
-
+      {/* Question box */}
       <div style={styles.questionArea}>
-        <div style={styles.questionLabel}>Question {currentQ + 1}</div>
+        <div style={styles.questionLabel}>Question {currentQ + 1} of {questions.length}</div>
         <div style={styles.questionText}>
           {displayedQuestion
-            ? <>{displayedQuestion}<span style={{ animation: 'blink 1s infinite', marginLeft: '1px' }}>|</span></>
+            ? <>{displayedQuestion}<span style={{ animation: 'blink 1s infinite', marginLeft: '1px', color: '#7c6aff' }}>|</span></>
             : <span style={{ color: '#3a3a4a', fontStyle: 'italic' }}>Interviewer is preparing...</span>
           }
         </div>
       </div>
 
+      {/* Answer transcript box */}
       <div style={styles.transcriptArea}>
+        <div style={styles.transcriptLabel}>Your Answer</div>
         <div style={styles.transcriptInner}>
-          {transcript || <span style={{ color: '#3a3a4a', fontStyle: 'italic' }}>Your answer will appear here...</span>}
+          {transcript || <span style={{ color: '#3a3a4a', fontStyle: 'italic' }}>Your answer will appear here as you speak...</span>}
         </div>
       </div>
 
+      {/* Buttons — RECORD / PAUSE / SUBMIT / END */}
       <div style={styles.actions}>
         {phase === 'ready' && (
-          <button style={styles.micBtn} onClick={startListening}>
-            🎤 Tap to Answer
+          <button style={styles.recordBtn} onClick={startListening}>
+            RECORD
           </button>
         )}
         {phase === 'listening' && (
-          <button style={styles.stopBtn} onClick={stopListening}>
-            ⏹ Stop
+          <button style={styles.pauseBtn} onClick={stopListening}>
+            PAUSE
           </button>
         )}
         {showSubmit && (
           <button style={styles.submitBtn} onClick={submitAnswer}>
-            Submit Answer →
+            SUBMIT
           </button>
         )}
         {(phase === 'ready' || phase === 'listening') && (
           <button style={styles.skipBtn} onClick={skipQuestion}>
-            Skip
+            SKIP
           </button>
         )}
         {(phase === 'ready' || phase === 'listening') && answers.length > 0 && (
           <button style={styles.endBtn} onClick={endInterview}>
-            End Interview
+            END
           </button>
         )}
-      </div>
-
-      <div style={styles.qHint}>
-        Question {currentQ + 1} of {questions.length}
       </div>
 
     </div>
@@ -370,7 +382,7 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    background: '#0a0a0f',
+    background: 'radial-gradient(ellipse at top, #0d0d1a 0%, #0a0a0f 60%)',
     padding: '0 24px 40px',
   },
   topBar: {
@@ -386,6 +398,7 @@ const styles = {
     fontFamily: "'DM Mono', monospace",
     color: '#7c6aff',
     fontWeight: '700',
+    letterSpacing: '1px',
   },
   progressDots: { display: 'flex', gap: '6px' },
   dot: {
@@ -394,26 +407,41 @@ const styles = {
   },
   dotDone: { background: '#22c55e', border: '1px solid #22c55e' },
   dotActive: { background: '#7c6aff', border: '1px solid #7c6aff' },
+
   orbArea: {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: '50px',
-    marginBottom: '40px',
+    marginTop: '40px',
+    marginBottom: '36px',
   },
   orbWrapper: {
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    gap: '16px',
+    gap: '20px',
     position: 'relative',
   },
-  orb: {
-    width: '160px',
-    height: '160px',
+  outerRing: {
+    position: 'absolute',
+    width: '220px',
+    height: '220px',
     borderRadius: '50%',
-    background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
-    border: '2px solid rgba(124,106,255,0.3)',
+    border: '1px solid rgba(124,106,255,0.2)',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -58%)',
+    pointerEvents: 'none',
+    transition: 'all 0.4s ease',
+  },
+  outerRingSpeaking: {
+    border: '1px solid rgba(124,106,255,0.5)',
+    boxShadow: '0 0 30px rgba(124,106,255,0.15)',
+  },
+  orb: {
+    width: '170px',
+    height: '170px',
+    borderRadius: '50%',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
@@ -422,141 +450,150 @@ const styles = {
     transition: 'all 0.4s ease',
   },
   orbIdle: {
+    background: 'radial-gradient(circle at 35% 35%, #2a1f6e, #1a1240)',
+    boxShadow: '0 0 30px rgba(124,106,255,0.25)',
     animation: 'orbIdle 3s ease-in-out infinite',
   },
   orbSpeaking: {
-    background: 'linear-gradient(135deg, #7c6aff, #a855f7)',
-    border: '2px solid rgba(255,255,255,0.3)',
+    background: 'radial-gradient(circle at 35% 35%, #7c6aff, #4c35cc)',
     animation: 'orbGlow 1.2s ease-in-out infinite',
   },
+  orbListening: {
+    background: 'radial-gradient(circle at 35% 35%, #5a4fd4, #3a2db0)',
+    animation: 'listeningPulse 1.5s ease-in-out infinite',
+  },
   orbEvaluating: {
-    background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
-    border: '2px solid rgba(124,106,255,0.5)',
+    background: 'radial-gradient(circle at 35% 35%, #2a1f6e, #1a1240)',
     animation: 'orbIdle 3s ease-in-out infinite',
   },
   spinnerInner: {
     width: '40px', height: '40px',
-    border: '3px solid rgba(124,106,255,0.2)',
-    borderTop: '3px solid #7c6aff',
+    border: '3px solid rgba(255,255,255,0.2)',
+    borderTop: '3px solid #fff',
     borderRadius: '50%',
     animation: 'spin 1s linear infinite',
   },
-  orbLabel: {
-    fontSize: '12px',
-    color: '#6b6b80',
-    fontFamily: "'DM Mono', monospace",
-  },
-  statusText: {
-    fontSize: '15px',
-    color: '#9999b0',
-    fontFamily: "'DM Mono', monospace",
-    marginBottom: '24px',
-  },
-  questionArea: {
-    display: 'block',
-    width: '100%',
-    maxWidth: '460px',
-    background: 'rgba(124,106,255,0.06)',
-    border: '1px solid rgba(124,106,255,0.25)',
-    borderRadius: '16px',
-    padding: '16px',
-    marginBottom: '12px',
-  },
-  questionLabel: {
+  statusBadge: {
     fontSize: '11px',
     fontFamily: "'DM Mono', monospace",
     color: '#7c6aff',
+    letterSpacing: '3px',
     fontWeight: '700',
-    marginBottom: '8px',
+  },
+
+  questionArea: {
+    width: '100%',
+    maxWidth: '500px',
+    background: 'rgba(255,255,255,0.03)',
+    border: '1px solid rgba(124,106,255,0.15)',
+    borderRadius: '16px',
+    padding: '18px 20px',
+    marginBottom: '12px',
+  },
+  questionLabel: {
+    fontSize: '10px',
+    fontFamily: "'DM Mono', monospace",
+    color: '#7c6aff',
+    fontWeight: '700',
+    marginBottom: '10px',
     textTransform: 'uppercase',
-    letterSpacing: '1px',
+    letterSpacing: '2px',
   },
   questionText: {
-    fontSize: '14px',
+    fontSize: '15px',
     color: '#f0f0f8',
     lineHeight: '1.6',
+    fontWeight: '500',
   },
+
   transcriptArea: {
-    display: 'block',
     width: '100%',
-    maxWidth: '460px',
-    background: '#111118',
-    border: '1px solid rgba(255,255,255,0.07)',
+    maxWidth: '500px',
+    background: 'rgba(255,255,255,0.02)',
+    border: '1px solid rgba(255,255,255,0.06)',
     borderRadius: '16px',
-    padding: '16px',
-    marginBottom: '24px',
-    minHeight: '60px',
+    padding: '18px 20px',
+    marginBottom: '28px',
+    minHeight: '80px',
+  },
+  transcriptLabel: {
+    fontSize: '10px',
+    fontFamily: "'DM Mono', monospace",
+    color: '#4a4a5a',
+    fontWeight: '700',
+    marginBottom: '10px',
+    textTransform: 'uppercase',
+    letterSpacing: '2px',
   },
   transcriptInner: {
-    display: 'block',
     fontSize: '14px',
-    color: '#f0f0f8',
+    color: '#c0c0d8',
     lineHeight: '1.6',
     minHeight: '24px',
   },
+
   actions: {
     display: 'flex',
-    gap: '10px',
-    marginBottom: '20px',
-    flexWrap: 'wrap',
+    gap: '12px',
     justifyContent: 'center',
+    flexWrap: 'wrap',
   },
-  micBtn: {
-    padding: '14px 28px',
+  recordBtn: {
+    padding: '14px 32px',
+    background: 'transparent',
+    border: '1px solid rgba(255,255,255,0.15)',
+    borderRadius: '100px',
+    fontSize: '12px',
+    fontWeight: '700',
+    color: '#fff',
+    cursor: 'pointer',
+    fontFamily: "'DM Mono', monospace",
+    letterSpacing: '2px',
+  },
+  pauseBtn: {
+    padding: '14px 32px',
     background: '#7c6aff',
     border: 'none',
     borderRadius: '100px',
-    fontSize: '14px',
+    fontSize: '12px',
     fontWeight: '700',
     color: '#fff',
     cursor: 'pointer',
-    fontFamily: "'Syne', sans-serif",
-  },
-  stopBtn: {
-    padding: '14px 28px',
-    background: 'rgba(239,68,68,0.15)',
-    border: '1px solid rgba(239,68,68,0.4)',
-    borderRadius: '100px',
-    fontSize: '14px',
-    fontWeight: '700',
-    color: '#ef4444',
-    cursor: 'pointer',
-    fontFamily: "'Syne', sans-serif",
+    fontFamily: "'DM Mono', monospace",
+    letterSpacing: '2px',
   },
   submitBtn: {
-    padding: '14px 24px',
+    padding: '14px 32px',
     background: '#22c55e',
     border: 'none',
     borderRadius: '100px',
-    fontSize: '14px',
+    fontSize: '12px',
     fontWeight: '700',
     color: '#fff',
     cursor: 'pointer',
-    fontFamily: "'Syne', sans-serif",
+    fontFamily: "'DM Mono', monospace",
+    letterSpacing: '2px',
   },
   skipBtn: {
-    padding: '14px 20px',
+    padding: '14px 24px',
     background: 'transparent',
     border: '1px solid rgba(255,255,255,0.07)',
     borderRadius: '100px',
-    fontSize: '13px',
+    fontSize: '12px',
     color: '#6b6b80',
     cursor: 'pointer',
-    fontFamily: "'Syne', sans-serif",
+    fontFamily: "'DM Mono', monospace",
+    letterSpacing: '2px',
   },
   endBtn: {
-    padding: '14px 20px',
+    padding: '14px 24px',
     background: 'transparent',
     border: '1px solid rgba(239,68,68,0.3)',
     borderRadius: '100px',
-    fontSize: '13px',
+    fontSize: '12px',
     color: '#ef4444',
     cursor: 'pointer',
-    fontFamily: "'Syne', sans-serif",
-  },
-  qHint: {
-    fontSize: '11px',
-    color: '#3a3a4a',
     fontFamily: "'DM Mono', monospace",
+    letterSpacing: '2px',
   },
 }
