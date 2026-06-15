@@ -27,6 +27,8 @@ function App() {
           results={results}
           config={config}
           onRetry={() => setScreen('landing')}
+          onRetrySameRole={() => setScreen('interview')}
+
         />
       )}
     </div>
