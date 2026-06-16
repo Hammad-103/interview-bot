@@ -89,10 +89,10 @@ export default function ReportCard({ results, config, onRetry, onRetrySameRole }
         </div>
         <div style={styles.headerActions}>
           <button style={styles.shareBtn} onClick={() => {
-            const text = `🎯 I just completed an AI Interview!\n\nRole: ${config.role}\nLevel: ${config.level}\nScore: ${percent}% (${grade.label})\n\nTry it yourself: https://interview-bot-ivory-six.vercel.app`
+            const text = `I just completed an AI Interview!\n\nRole: ${config.role}\nLevel: ${config.level}\nScore: ${percent}% (${grade.label})\n\nTry it yourself: https://interview-bot-ivory-six.vercel.app`
             if (navigator.share) navigator.share({ title: 'Interview Bot Result', text })
             else navigator.clipboard.writeText(text).then(() => alert('Copied!'))
-          }}>Share 🚀</button>
+          }}>Share </button>
         </div>
       </div>
 
@@ -111,7 +111,7 @@ export default function ReportCard({ results, config, onRetry, onRetrySameRole }
         <div style={styles.statCard}>
           <div style={{ ...styles.statNum, color: '#f59e0b' }}>{bestScore ?? percent}%</div>
           <div style={styles.statLabel}>Best Score</div>
-          <div style={styles.statSub}>🏆 All time</div>
+          <div style={styles.statSub}> All time</div>
         </div>
         {previousScores.length > 1 && (
           <div style={styles.statCard}>
@@ -152,7 +152,6 @@ export default function ReportCard({ results, config, onRetry, onRetrySameRole }
                 ) : (
                   <div style={styles.skipped}>⚠ Skipped</div>
                 )}
-                <div style={styles.feedbackText}>💬 {getFeedback(scores[i])}</div>
               </div>
             )
           })}
@@ -202,13 +201,13 @@ export default function ReportCard({ results, config, onRetry, onRetrySameRole }
             <div style={styles.panelTitle}>Next Steps</div>
             <div style={styles.actionCol}>
               <button style={styles.retryBtn} onClick={onRetry}>Try Another Role</button>
-              <button style={styles.retrySameBtn} onClick={onRetrySameRole}>🔄 Same Role</button>
+              <button style={styles.retrySameBtn} onClick={onRetrySameRole}> Same Role</button>
               <button style={styles.copyBtn} onClick={() => {
                 const text = questions.map((q, i) =>
                   `Q${i+1}: ${q}\nAnswer: ${answers[i]}\nScore: ${scores[i]}/9`
                 ).join('\n\n')
                 navigator.clipboard.writeText(text).then(() => alert('Copied!'))
-              }}>📋 Copy Results</button>
+              }}> Copy Results</button>
             </div>
           </div>
 

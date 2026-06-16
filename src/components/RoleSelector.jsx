@@ -1,12 +1,12 @@
 import { useState } from 'react'
 
 const ROLES = [
-  { id: 'Frontend Dev', icon: '💻', sub: 'React · CSS · JS' },
-  { id: 'Backend Dev', icon: '⚙️', sub: 'Node · APIs · DBs' },
-  { id: 'Data Science', icon: '📊', sub: 'ML · Python · Stats' },
-  { id: 'Product Manager', icon: '🧭', sub: 'Strategy · Roadmaps' },
-  { id: 'UI/UX Designer', icon: '🎨', sub: 'Design · Research' },
-  { id: 'HR / Behavioral', icon: '🤝', sub: 'Soft skills · Culture' },
+  { id: 'Frontend Dev', sub: 'React · CSS · JS' },
+  { id: 'Backend Dev',  sub: 'Node · APIs · DBs' },
+  { id: 'Data Science', sub: 'ML · Python · Stats' },
+  { id: 'Product Manager',  sub: 'Strategy · Roadmaps' },
+  { id: 'UI/UX Designer', sub: 'Design · Research' },
+  { id: 'HR / Behavioral',  sub: 'Soft skills · Culture' },
 ]
 
 const LEVELS = ['Junior', 'Mid', 'Senior']
