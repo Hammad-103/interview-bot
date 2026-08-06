@@ -1,12 +1,12 @@
 import { useState } from 'react'
 
 const ROLES = [
-  { id: 'Frontend Dev', sub: 'React · CSS · JS' },
-  { id: 'Backend Dev',  sub: 'Node · APIs · DBs' },
-  { id: 'Data Science', sub: 'ML · Python · Stats' },
-  { id: 'Product Manager',  sub: 'Strategy · Roadmaps' },
-  { id: 'UI/UX Designer', sub: 'Design · Research' },
-  { id: 'HR / Behavioral',  sub: 'Soft skills · Culture' },
+  { role: 'Frontend Dev', sub: 'React · CSS · JS' },
+  { role: 'Backend Dev',  sub: 'Node · APIs · DBs' },
+  { role: 'Data Science', sub: 'ML · Python · Stats' },
+  { role: 'Product Manager',  sub: 'Strategy · Roadmaps' },
+  { role: 'UI/UX Designer', sub: 'Design · Research' },
+  { role: 'HR / Behavioral',  sub: 'Soft skills · Culture' },
 ]
 
 const LEVELS = ['Junior', 'Mid', 'Senior']
@@ -35,15 +35,15 @@ export default function RoleSelector({ onStart }) {
       <div style={styles.grid}>
         {ROLES.map((r) => (
           <div
-            key={r.id}
+            key={r.role}
             style={{
               ...styles.card,
-              ...(role === r.id ? styles.cardSelected : {})
+              ...(role === r.role ? styles.cardSelected : {})
             }}
-            onClick={() => setRole(r.id)}
+            onClick={() => setRole(r.role)}
           >
             <div style={styles.icon}>{r.icon}</div>
-            <div style={styles.roleName}>{r.id}</div>
+            <div style={styles.roleName}>{r.role}</div>
             <div style={styles.roleSub}>{r.sub}</div>
           </div>
         ))}
