@@ -1,61 +1,26 @@
 import { useState, useEffect, useRef } from 'react'
-import { QUESTIONS, KEYWORDS } from '../data/questions'
+import { QUESTIONS  } from '../data/questions'
+import { useSpeech } from '../hooks/useSpeech'
+import { useVoiceRecognition } from '../hooks/useVoiceRecognition'
+import { evaluateAnswers } from '../utils/evaluateAnswers'
 
 export default function InterviewScreen({ config, onFinish }) {
+  
   const [phase, setPhase] = useState('bot')
   const [currentQ, setCurrentQ] = useState(0)
   const [currentQuestion, setCurrentQuestion] = useState('')
-  const [displayedQuestion, setDisplayedQuestion] = useState('')
   const [answers, setAnswers] = useState([])
-  const [transcript, setTranscript] = useState('')
   const [showSubmit, setShowSubmit] = useState(false)
   const [statusText, setStatusText] = useState('Interviewer is joining...')
   const [isEvaluating, setIsEvaluating] = useState(false)
   const [botSpeaking, setBotSpeaking] = useState(false)
-  const recognitionRef = useRef(null)
-  const typingRef = useRef(null)
+  const { displayedQuestion, typeQuestion, speakText } = useSpeech()  
+  const { startListening, stopListening, transcript, resetTranscript } = useVoiceRecognition(setStatusText, setPhase, setShowSubmit)
+
   const questions = QUESTIONS[config.role][config.level]
 
-  useEffect(() => {
-    const style = document.createElement('style')
-    style.innerHTML = `
-      @keyframes orbGlow {
-        0%, 100% { 
-          box-shadow: 0 0 60px rgba(124,106,255,0.6), 0 0 120px rgba(124,106,255,0.2);
-          transform: scale(1);
-        }
-        50% { 
-          box-shadow: 0 0 100px rgba(124,106,255,0.9), 0 0 180px rgba(168,85,247,0.5);
-          transform: scale(1.05);
-        }
-      }
-      @keyframes orbIdle {
-        0%, 100% { box-shadow: 0 0 30px rgba(124,106,255,0.25); }
-        50% { box-shadow: 0 0 50px rgba(124,106,255,0.35); }
-      }
-      @keyframes ringRotate {
-        from { transform: rotate(0deg); }
-        to { transform: rotate(360deg); }
-      }
-      @keyframes spin {
-        to { transform: rotate(360deg); }
-      }
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(8px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      @keyframes blink {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0; }
-      }
-      @keyframes listeningPulse {
-        0%, 100% { box-shadow: 0 0 30px rgba(124,106,255,0.3); }
-        50% { box-shadow: 0 0 60px rgba(124,106,255,0.5); }
-      }
-    `
-    document.head.appendChild(style)
-    return () => document.head.removeChild(style)
-  }, [])
+
+ 
 
   useEffect(() => {
     setTimeout(() => {
@@ -68,40 +33,42 @@ export default function InterviewScreen({ config, onFinish }) {
       })
     }, 800)
   }, [])
+  
+  
 
-  function typeQuestion(text) {
-    if (typingRef.current) clearInterval(typingRef.current)
-    setDisplayedQuestion('')
-    let i = 0
-    typingRef.current = setInterval(() => {
-      i++
-      setDisplayedQuestion(text.slice(0, i))
-      if (i >= text.length) clearInterval(typingRef.current)
-    }, 50)
-  }
 
-  function speakText(text, onDone) {
-    if (!('speechSynthesis' in window)) {
-      onDone && onDone()
-      return
-    }
-    window.speechSynthesis.cancel()
-    const utt = new SpeechSynthesisUtterance(text)
-    utt.rate = 0.92
-    utt.pitch = 1.0
-    const voices = window.speechSynthesis.getVoices()
-    const preferred = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google'))
-      || voices.find(v => v.lang.startsWith('en'))
-    if (preferred) utt.voice = preferred
-    utt.onend = () => { onDone && onDone() }
-    window.speechSynthesis.speak(utt)
-  }
+    
+      function submitAnswer() {
+       stopListening()
+        const ans = transcript.trim()
+        if (!ans) { skipQuestion(); return }
+     resetTranscript()
+        setShowSubmit(false)
+        const newAnswers = [...answers, ans]
+        setAnswers(newAnswers)
+        const next = currentQ + 1
+        if (next < questions.length) {
+          setPhase('bot')
+          setStatusText('SPEAKING')
+          setBotSpeaking(true)
+          const acks = ['Got it. Next question.', 'Interesting. Moving on.', 'Thank you. Here is the next one.', 'Noted. Let us continue.']
+          speakText(acks[Math.floor(Math.random() * acks.length)], () => {
+            setBotSpeaking(false)
+            setTimeout(() => askQuestion(next), 400)
+          })
+        } else {
+          setPhase('evaluating')
+          setStatusText('EVALUATING')
+          speakText('That is all 5 questions. Evaluating your answers now.', () => {
+            finishInterview(newAnswers)
+          })
+        }
+      }
 
   function askQuestion(index) {
     if (index >= questions.length) return
     setCurrentQ(index)
     setCurrentQuestion(questions[index])
-    setDisplayedQuestion('')
     setPhase('bot')
     setStatusText('SPEAKING')
     setBotSpeaking(true)
@@ -114,98 +81,11 @@ export default function InterviewScreen({ config, onFinish }) {
     setTimeout(() => typeQuestion(q), 1500)
   }
 
-  function startListening() {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition
-    if (!SR) {
-      setStatusText('USE CHROME')
-      return
-    }
-    let final = ''
-    const recognition = new SR()
-    recognition.continuous = false
-    recognition.interimResults = true
-    recognition.lang = 'en-US'
 
-    recognition.onresult = (e) => {
-      let interim = ''
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) final += e.results[i][0].transcript
-        else interim += e.results[i][0].transcript
-      }
-      setTranscript(final + interim)
-      if (final.trim()) setShowSubmit(true)
-    }
-
-    recognition.onend = () => {
-      if (recognitionRef.current) {
-        recognitionRef.current = null
-        const newRec = new SR()
-        newRec.continuous = false
-        newRec.interimResults = true
-        newRec.lang = 'en-US'
-        newRec.onresult = recognition.onresult
-        newRec.onend = recognition.onend
-        newRec.onerror = recognition.onerror
-        newRec.start()
-        recognitionRef.current = newRec
-      }
-    }
-
-    recognition.onerror = (e) => {
-      if (e.error === 'no-speech') return
-      stopListening()
-    }
-
-    recognition.start()
-    recognitionRef.current = recognition
-    setPhase('listening')
-    setStatusText('LISTENING')
-  }
-
-  function stopListening() {
-    const rec = recognitionRef.current
-    recognitionRef.current = null
-    if (rec) rec.stop()
-    setPhase('ready')
-    setStatusText('READY')
-  }
-
-  function submitAnswer() {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop()
-      recognitionRef.current = null
-    }
-    const ans = transcript.trim()
-    if (!ans) { skipQuestion(); return }
-    setTranscript('')
-    setShowSubmit(false)
-    const newAnswers = [...answers, ans]
-    setAnswers(newAnswers)
-    const next = currentQ + 1
-    if (next < questions.length) {
-      setPhase('bot')
-      setStatusText('SPEAKING')
-      setBotSpeaking(true)
-      const acks = ['Got it. Next question.', 'Interesting. Moving on.', 'Thank you. Here is the next one.', 'Noted. Let us continue.']
-      speakText(acks[Math.floor(Math.random() * acks.length)], () => {
-        setBotSpeaking(false)
-        setTimeout(() => askQuestion(next), 400)
-      })
-    } else {
-      setPhase('evaluating')
-      setStatusText('EVALUATING')
-      speakText('That is all 5 questions. Evaluating your answers now.', () => {
-        finishInterview(newAnswers)
-      })
-    }
-  }
 
   function skipQuestion() {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop()
-      recognitionRef.current = null
-    }
-    setTranscript('')
+   stopListening()
+   resetTranscript()
     setShowSubmit(false)
     const newAnswers = [...answers, '[Skipped]']
     setAnswers(newAnswers)
@@ -218,9 +98,7 @@ export default function InterviewScreen({ config, onFinish }) {
   }
 
   function endInterview() {
-    const rec = recognitionRef.current
-    recognitionRef.current = null
-    if (rec) rec.stop()
+    stopListening()
     const finalAnswers = [...answers]
     while (finalAnswers.length < questions.length) {
       finalAnswers.push('[Skipped]')
@@ -235,42 +113,10 @@ export default function InterviewScreen({ config, onFinish }) {
     setBotSpeaking(false)
     setStatusText('EVALUATING')
 
-    const qa = questions.map((q, i) => ({ q, a: finalAnswers[i] }))
-    const prompt = `You are a strict but fair interviewer evaluating a ${config.level} ${config.role} candidate. Rate each answer from 1-9. If the answer is '[Skipped]' or empty, give it 0. Questions and answers: ${qa.map((x, i) => `Q${i+1}: ${x.q}\nAnswer: ${x.a}`).join('\n\n')}. Respond ONLY with a JSON array like [7,4,8,3,6] nothing else.`
-
-    try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-api-key": import.meta.env.VITE_ANTHROPIC_KEY,
-          "anthropic-version": "2023-06-01",
-          "anthropic-dangerous-direct-browser-access": "true"
-        },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 100,
-          messages: [{ role: "user", content: prompt }]
-        })
-      })
-      const data = await response.json()
-      const scores = JSON.parse(data.content[0].text.trim())
-      setTimeout(() => onFinish({ questions, answers: finalAnswers, scores }), 1000)
-    } catch (err) {
-      const keywordSets = KEYWORDS[config.role][config.level]
-      const scores = finalAnswers.map((answer, i) => {
-        if (answer === '[Skipped]') return 0
-        const text = answer.toLowerCase()
-        const keywords = keywordSets[i] || []
-        const matched = keywords.filter(k => text.includes(k.toLowerCase())).length
-        const keywordScore = Math.min((matched / Math.max(keywords.length * 0.4, 1)) * 5, 5)
-        const hasPunctuation = (text.match(/[.!?]/g) || []).length >= 2
-        const hasExample = /example|instance|like|such as|for instance|when i|i did|we used|in my/.test(text)
-        return Math.min(Math.max(Math.round(keywordScore + (hasPunctuation ? 1 : 0) + (hasExample ? 1 : 0)), 0), 9)
-      })
+    const scores = await evaluateAnswers(questions, finalAnswers, config)
       setTimeout(() => onFinish({ questions, answers: finalAnswers, scores }), 1000)
     }
-  }
+  
 
   return (
     <div style={styles.container}>
