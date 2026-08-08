@@ -47,3 +47,37 @@ input, textarea {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+ @keyframes orbGlow {
+        0%, 100% { 
+          box-shadow: 0 0 60px rgba(124,106,255,0.6), 0 0 120px rgba(124,106,255,0.2);
+          transform: scale(1);
+        }
+        50% { 
+          box-shadow: 0 0 100px rgba(124,106,255,0.9), 0 0 180px rgba(168,85,247,0.5);
+          transform: scale(1.05);
+        }
+      }
+      @keyframes orbIdle {
+        0%, 100% { box-shadow: 0 0 30px rgba(124,106,255,0.25); }
+        50% { box-shadow: 0 0 50px rgba(124,106,255,0.35); }
+      }
+      @keyframes ringRotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0; }
+      }
+      @keyframes listeningPulse {
+        0%, 100% { box-shadow: 0 0 30px rgba(124,106,255,0.3); }
+        50% { box-shadow: 0 0 60px rgba(124,106,255,0.5); }
+      }
+    
