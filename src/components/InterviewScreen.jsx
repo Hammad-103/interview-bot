@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { QUESTIONS  } from '../data/questions'
 import { useSpeech } from '../hooks/useSpeech'
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition'
 import { evaluateAnswers } from '../utils/evaluateAnswers'
+import { generateQuestions } from '../utils/generateQuestions'
 
 export default function InterviewScreen({ config, onFinish }) {
   
@@ -14,26 +14,31 @@ export default function InterviewScreen({ config, onFinish }) {
   const [statusText, setStatusText] = useState('Interviewer is joining...')
   const [isEvaluating, setIsEvaluating] = useState(false)
   const [botSpeaking, setBotSpeaking] = useState(false)
+  const [questions, setQuestions] = useState(null)
+
   const { displayedQuestion, typeQuestion, speakText } = useSpeech()  
   const { startListening, stopListening, transcript, resetTranscript } = useVoiceRecognition(setStatusText, setPhase, setShowSubmit)
-
-  const questions = QUESTIONS[config.role][config.level]
 
 
  
 
+  
   useEffect(() => {
-    setTimeout(() => {
-      const introText = "Hi! I'm your AI interviewer. I'll ask you 5 questions — take your time with each answer. Ready?"
+  if (!questions) return
+  setTimeout(() => {
+     const introText = "Hi! I'm your AI interviewer. I'll ask you 5 questions — take your time with each answer. Ready?"
       setStatusText('Interviewer is speaking...')
       setBotSpeaking(true)
       speakText(introText, () => {
         setBotSpeaking(false)
         setTimeout(() => askQuestion(0), 500)
       })
-    }, 800)
-  }, [])
+  }, 800)
+}, [questions])
   
+  useEffect(() => {
+  generateQuestions(config).then(qs => setQuestions(qs))
+}, [])
   
 
 
@@ -117,6 +122,7 @@ export default function InterviewScreen({ config, onFinish }) {
       setTimeout(() => onFinish({ questions, answers: finalAnswers, scores }), 1000)
     }
   
+  if (!questions) return <div style={{color: '#fff', padding: '40px'}}>Generating your questions...</div>
 
   return (
     <div style={styles.container}>
