@@ -13,7 +13,7 @@ export default function ReportCard({ results, config, onRetry, onRetrySameRole }
 
   const grade =
     percent >= 80 ? { label: 'Excellent', color: '#22c55e' } :
-    percent >= 60 ? { label: 'Good', color: '#7c6aff' } :
+    percent >= 60 ? { label: 'Good', color: '#22d3ee' } :
     percent >= 40 ? { label: 'Average', color: '#f59e0b' } :
     { label: 'Needs Work', color: '#ef4444' }
 
@@ -40,7 +40,7 @@ export default function ReportCard({ results, config, onRetry, onRetrySameRole }
       y: Math.random() * -canvas.height,
       w: Math.random() * 10 + 5,
       h: Math.random() * 6 + 4,
-      color: ['#7c6aff', '#22c55e', '#f59e0b', '#a855f7', '#ef4444', '#60a5fa'][Math.floor(Math.random() * 6)],
+      color: ['#0891b2', '#22c55e', '#f59e0b', '#22d3ee', '#67e8f9', '#ef4444'][Math.floor(Math.random() * 6)],
       speed: Math.random() * 3 + 2,
       angle: Math.random() * 360,
       spin: Math.random() * 4 - 2,
@@ -77,7 +77,7 @@ export default function ReportCard({ results, config, onRetry, onRetrySameRole }
     <div style={styles.container}>
       <canvas ref={canvasRef} style={styles.canvas} />
 
-      {/* ── Header ── */}
+      {/* Header */}
       <div style={styles.header}>
         <div>
           <div style={styles.headerBadge}>
@@ -96,7 +96,7 @@ export default function ReportCard({ results, config, onRetry, onRetrySameRole }
         </div>
       </div>
 
-      {/* ── Stats Row ── */}
+      {/* Stats Row */}
       <div style={styles.statsRow}>
         <div style={{ ...styles.statCard, borderColor: `${grade.color}44` }}>
           <div style={{ ...styles.statNum, color: grade.color }}>{percent}%</div>
@@ -122,10 +122,10 @@ export default function ReportCard({ results, config, onRetry, onRetrySameRole }
         )}
       </div>
 
-      {/* ── Main Grid ── */}
+      {/* Main Grid */}
       <div style={styles.grid}>
 
-        {/* Left — Question Breakdown */}
+        {/* Left: Question Breakdown */}
         <div style={styles.panel}>
           <div style={styles.panelHeader}>
             <div style={styles.panelTitle}>Question Breakdown</div>
@@ -133,7 +133,7 @@ export default function ReportCard({ results, config, onRetry, onRetrySameRole }
           </div>
           {questions.map((q, i) => {
             const pct = Math.round((scores[i] / 9) * 100)
-            const col = scores[i] >= 7 ? '#22c55e' : scores[i] >= 5 ? '#7c6aff' : scores[i] > 0 ? '#f59e0b' : '#ef4444'
+            const col = scores[i] >= 7 ? '#22c55e' : scores[i] >= 5 ? '#22d3ee' : scores[i] > 0 ? '#f59e0b' : '#ef4444'
             return (
               <div key={i} style={styles.qBlock}>
                 <div style={styles.qTop}>
@@ -157,7 +157,7 @@ export default function ReportCard({ results, config, onRetry, onRetrySameRole }
           })}
         </div>
 
-        {/* Right — Sidebar */}
+        {/* Right: Sidebar */}
         <div style={styles.sidebar}>
 
           {/* Score History */}
@@ -171,12 +171,12 @@ export default function ReportCard({ results, config, onRetry, onRetrySameRole }
                     <div style={{
                       ...styles.historyBarFill,
                       width: `${entry.score}%`,
-                      background: entry.score >= 80 ? '#22c55e' : entry.score >= 60 ? '#7c6aff' : '#f59e0b'
+                      background: entry.score >= 80 ? '#22c55e' : entry.score >= 60 ? '#22d3ee' : '#f59e0b'
                     }} />
                   </div>
                   <span style={{
                     ...styles.historyScore,
-                    color: entry.score >= 80 ? '#22c55e' : entry.score >= 60 ? '#7c6aff' : '#f59e0b'
+                    color: entry.score >= 80 ? '#22c55e' : entry.score >= 60 ? '#22d3ee' : '#f59e0b'
                   }}>{entry.score}%</span>
                 </div>
               ))}
@@ -218,10 +218,14 @@ export default function ReportCard({ results, config, onRetry, onRetrySameRole }
   )
 }
 
+const mono = "'DM Mono', monospace"
+const sans = "'Poppins', sans-serif"
+
 const styles = {
   container: {
     minHeight: '100vh',
-    background: '#0a0a0f',
+    background: '#050f14',
+    fontFamily: sans,
     padding: '32px 32px 60px',
     position: 'relative',
   },
@@ -242,20 +246,25 @@ const styles = {
   },
   headerBadge: {
     display: 'inline-flex', alignItems: 'center', gap: '8px',
-    background: '#1a1a24', border: '1px solid rgba(255,255,255,0.13)',
+    background: '#0c1d25', border: '1px solid rgba(255,255,255,0.10)',
     borderRadius: '100px', padding: '5px 12px',
-    fontSize: '11px', color: '#9999b0',
-    fontFamily: "'DM Mono', monospace", marginBottom: '8px',
+    fontSize: '11px', color: '#84b3c0',
+    fontFamily: mono, marginBottom: '8px',
   },
-  dot: { width: '7px', height: '7px', background: '#22c55e', borderRadius: '50%', display: 'inline-block' },
-  heading: { fontSize: '28px', fontWeight: '800', color: '#f0f0f8', letterSpacing: '-1px', marginBottom: '4px' },
-  sub: { fontSize: '13px', color: '#6b6b80', fontFamily: "'DM Mono', monospace" },
+  dot: { width: '7px', height: '7px', background: '#67e8f9', borderRadius: '50%', display: 'inline-block' },
+  heading: {
+    fontFamily: sans,
+    fontSize: '28px', fontWeight: '700', color: '#e8f7fa',
+    letterSpacing: '-0.5px', marginBottom: '4px',
+  },
+  sub: { fontSize: '13px', color: '#6a9aa8', fontFamily: mono },
   headerActions: { display: 'flex', gap: '10px', alignItems: 'center' },
   shareBtn: {
     padding: '10px 20px',
-    background: 'linear-gradient(135deg, #7c6aff, #a855f7)',
+    background: '#0891b2',
     border: 'none', borderRadius: '10px',
-    fontSize: '13px', color: '#fff', fontWeight: '700', cursor: 'pointer',
+    fontFamily: sans,
+    fontSize: '13px', color: '#ecfeff', fontWeight: '600', cursor: 'pointer',
   },
 
   // Stats Row
@@ -266,23 +275,24 @@ const styles = {
     marginBottom: '24px',
   },
   statCard: {
-    background: '#111118',
+    background: '#0a1820',
     border: '1px solid rgba(255,255,255,0.07)',
     borderRadius: '14px',
     padding: '18px 20px',
     display: 'flex', flexDirection: 'column', gap: '4px',
   },
   statNum: {
-    fontSize: '32px', fontWeight: '800',
-    color: '#f0f0f8', letterSpacing: '-1px', lineHeight: '1',
+    fontFamily: sans,
+    fontSize: '32px', fontWeight: '700',
+    color: '#e8f7fa', letterSpacing: '-1px', lineHeight: '1.1',
   },
-  statDen: { fontSize: '18px', color: '#6b6b80', fontWeight: '400' },
-  statLabel: { fontSize: '12px', color: '#6b6b80', fontFamily: "'DM Mono', monospace", marginTop: '4px' },
-  statSub: { fontSize: '11px', color: '#4a4a5a', fontFamily: "'DM Mono', monospace" },
+  statDen: { fontSize: '18px', color: '#6a9aa8', fontWeight: '400' },
+  statLabel: { fontSize: '12px', color: '#6a9aa8', fontFamily: mono, marginTop: '4px' },
+  statSub: { fontSize: '11px', color: '#5f8794', fontFamily: mono },
   gradePill: {
     alignSelf: 'flex-start', padding: '2px 10px',
-    borderRadius: '100px', fontSize: '11px', fontWeight: '700',
-    fontFamily: "'DM Mono', monospace", marginTop: '4px',
+    borderRadius: '100px', fontSize: '11px', fontWeight: '500',
+    fontFamily: mono, marginTop: '4px',
   },
 
   // Main Grid
@@ -295,7 +305,7 @@ const styles = {
 
   // Left panel
   panel: {
-    background: '#111118',
+    background: '#0a1820',
     border: '1px solid rgba(255,255,255,0.07)',
     borderRadius: '16px',
     padding: '24px',
@@ -306,11 +316,11 @@ const styles = {
     marginBottom: '20px',
   },
   panelTitle: {
-    fontSize: '11px', fontWeight: '700', color: '#6b6b80',
+    fontSize: '11px', fontWeight: '500', color: '#6a9aa8',
     textTransform: 'uppercase', letterSpacing: '1.5px',
-    fontFamily: "'DM Mono', monospace",
+    fontFamily: mono,
   },
-  panelSub: { fontSize: '12px', color: '#4a4a5a', fontFamily: "'DM Mono', monospace" },
+  panelSub: { fontSize: '12px', color: '#5f8794', fontFamily: mono },
 
   qBlock: {
     borderTop: '1px solid rgba(255,255,255,0.05)',
@@ -320,28 +330,28 @@ const styles = {
   qTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' },
   qMeta: { display: 'flex', gap: '10px', alignItems: 'flex-start', flex: 1 },
   qNum: {
-    fontSize: '10px', fontWeight: '700', color: '#7c6aff',
-    fontFamily: "'DM Mono', monospace", flexShrink: 0, marginTop: '2px',
+    fontSize: '10px', fontWeight: '500', color: '#67e8f9',
+    fontFamily: mono, flexShrink: 0, marginTop: '4px',
   },
-  qText: { fontSize: '13px', color: '#f0f0f8', lineHeight: '1.5' },
-  qScore: { fontSize: '13px', fontWeight: '700', fontFamily: "'DM Mono', monospace", flexShrink: 0 },
+  qText: { fontFamily: sans, fontSize: '13px', color: '#e8f7fa', lineHeight: '1.55' },
+  qScore: { fontSize: '13px', fontWeight: '500', fontFamily: mono, flexShrink: 0 },
   progressBg: {
     width: '100%', height: '4px',
     background: 'rgba(255,255,255,0.06)', borderRadius: '2px', overflow: 'hidden',
   },
   progressFill: { height: '100%', borderRadius: '2px', transition: 'width 0.6s ease' },
   answerBox: {
-    background: '#1a1a24', borderRadius: '8px', padding: '8px 12px',
-    fontSize: '12px', color: '#9999b0',
-    fontFamily: "'DM Mono', monospace", lineHeight: '1.5', fontStyle: 'italic',
+    background: '#0c1d25', borderRadius: '8px', padding: '8px 12px',
+    fontSize: '12px', color: '#84b3c0',
+    fontFamily: sans, lineHeight: '1.6', fontStyle: 'italic',
   },
-  skipped: { fontSize: '12px', color: '#ef4444', fontFamily: "'DM Mono', monospace" },
-  feedbackText: { fontSize: '12px', color: '#6b6b80', lineHeight: '1.5' },
+  skipped: { fontSize: '12px', color: '#ef4444', fontFamily: mono },
+  feedbackText: { fontFamily: sans, fontSize: '12px', color: '#6a9aa8', lineHeight: '1.5' },
 
   // Sidebar
   sidebar: { display: 'flex', flexDirection: 'column', gap: '14px' },
   sidePanel: {
-    background: '#111118',
+    background: '#0a1820',
     border: '1px solid rgba(255,255,255,0.07)',
     borderRadius: '16px',
     padding: '20px',
@@ -351,30 +361,33 @@ const styles = {
   historyItem: {
     display: 'flex', alignItems: 'center', gap: '10px',
   },
-  historyDate: { fontSize: '11px', color: '#6b6b80', fontFamily: "'DM Mono', monospace", width: '70px', flexShrink: 0 },
+  historyDate: { fontSize: '11px', color: '#6a9aa8', fontFamily: mono, width: '70px', flexShrink: 0 },
   historyBarBg: { flex: 1, height: '4px', background: 'rgba(255,255,255,0.06)', borderRadius: '2px', overflow: 'hidden' },
   historyBarFill: { height: '100%', borderRadius: '2px' },
-  historyScore: { fontSize: '12px', fontWeight: '700', fontFamily: "'DM Mono', monospace", width: '36px', textAlign: 'right' },
+  historyScore: { fontSize: '12px', fontWeight: '500', fontFamily: mono, width: '36px', textAlign: 'right' },
 
-  tip: { display: 'flex', gap: '10px', fontSize: '13px', color: '#9999b0', lineHeight: '1.5' },
-  tipIcon: { color: '#7c6aff', flexShrink: 0, fontWeight: '700' },
+  tip: { fontFamily: sans, display: 'flex', gap: '10px', fontSize: '13px', color: '#84b3c0', lineHeight: '1.55' },
+  tipIcon: { color: '#67e8f9', flexShrink: 0, fontWeight: '600' },
 
   actionCol: { display: 'flex', flexDirection: 'column', gap: '8px' },
   retryBtn: {
-    padding: '12px', background: '#7c6aff', border: 'none',
-    borderRadius: '10px', fontSize: '13px', fontWeight: '700',
-    color: '#fff', cursor: 'pointer',
+    padding: '12px', background: '#0891b2', border: 'none',
+    borderRadius: '10px', fontFamily: sans,
+    fontSize: '13px', fontWeight: '600',
+    color: '#ecfeff', cursor: 'pointer',
   },
   retrySameBtn: {
-    padding: '12px', background: '#1a1a24',
-    border: '1px solid rgba(124,106,255,0.3)',
-    borderRadius: '10px', fontSize: '13px',
-    fontWeight: '600', color: '#7c6aff', cursor: 'pointer',
+    padding: '12px', background: '#0c1d25',
+    border: '1px solid rgba(103,232,249,0.3)',
+    borderRadius: '10px', fontFamily: sans,
+    fontSize: '13px',
+    fontWeight: '500', color: '#67e8f9', cursor: 'pointer',
   },
   copyBtn: {
     padding: '12px', background: 'transparent',
     border: '1px solid rgba(255,255,255,0.07)',
-    borderRadius: '10px', fontSize: '13px',
-    color: '#9999b0', cursor: 'pointer',
+    borderRadius: '10px', fontFamily: sans,
+    fontSize: '13px',
+    color: '#84b3c0', cursor: 'pointer',
   },
 }
