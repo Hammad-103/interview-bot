@@ -5,7 +5,7 @@ import { evaluateAnswers } from '../utils/evaluateAnswers'
 import { generateQuestions } from '../utils/generateQuestions'
 
 export default function InterviewScreen({ config, onFinish }) {
-  
+
   const [phase, setPhase] = useState('bot')
   const [currentQ, setCurrentQ] = useState(0)
   const [currentQuestion, setCurrentQuestion] = useState('')
@@ -16,59 +16,52 @@ export default function InterviewScreen({ config, onFinish }) {
   const [botSpeaking, setBotSpeaking] = useState(false)
   const [questions, setQuestions] = useState(null)
 
-  const { displayedQuestion, typeQuestion, speakText } = useSpeech()  
+  const { displayedQuestion, typeQuestion, speakText } = useSpeech()
   const { startListening, stopListening, transcript, resetTranscript } = useVoiceRecognition(setStatusText, setPhase, setShowSubmit)
 
-
- 
-
-  
   useEffect(() => {
-  if (!questions) return
-  setTimeout(() => {
-     const introText = "Hi! I'm your AI interviewer. I'll ask you 5 questions — take your time with each answer. Ready?"
+    if (!questions) return
+    setTimeout(() => {
+      const introText = "Hi! I'm your AI interviewer. I'll ask you 5 questions — take your time with each answer. Ready?"
       setStatusText('Interviewer is speaking...')
       setBotSpeaking(true)
       speakText(introText, () => {
         setBotSpeaking(false)
         setTimeout(() => askQuestion(0), 500)
       })
-  }, 800)
-}, [questions])
-  
+    }, 800)
+  }, [questions])
+
   useEffect(() => {
-  generateQuestions(config).then(qs => setQuestions(qs))
-}, [])
-  
+    generateQuestions(config).then(qs => setQuestions(qs))
+  }, [])
 
-
-    
-      function submitAnswer() {
-       stopListening()
-        const ans = transcript.trim()
-        if (!ans) { skipQuestion(); return }
-     resetTranscript()
-        setShowSubmit(false)
-        const newAnswers = [...answers, ans]
-        setAnswers(newAnswers)
-        const next = currentQ + 1
-        if (next < questions.length) {
-          setPhase('bot')
-          setStatusText('SPEAKING')
-          setBotSpeaking(true)
-          const acks = ['Got it. Next question.', 'Interesting. Moving on.', 'Thank you. Here is the next one.', 'Noted. Let us continue.']
-          speakText(acks[Math.floor(Math.random() * acks.length)], () => {
-            setBotSpeaking(false)
-            setTimeout(() => askQuestion(next), 400)
-          })
-        } else {
-          setPhase('evaluating')
-          setStatusText('EVALUATING')
-          speakText('That is all 5 questions. Evaluating your answers now.', () => {
-            finishInterview(newAnswers)
-          })
-        }
-      }
+  function submitAnswer() {
+    stopListening()
+    const ans = transcript.trim()
+    if (!ans) { skipQuestion(); return }
+    resetTranscript()
+    setShowSubmit(false)
+    const newAnswers = [...answers, ans]
+    setAnswers(newAnswers)
+    const next = currentQ + 1
+    if (next < questions.length) {
+      setPhase('bot')
+      setStatusText('SPEAKING')
+      setBotSpeaking(true)
+      const acks = ['Got it. Next question.', 'Interesting. Moving on.', 'Thank you. Here is the next one.', 'Noted. Let us continue.']
+      speakText(acks[Math.floor(Math.random() * acks.length)], () => {
+        setBotSpeaking(false)
+        setTimeout(() => askQuestion(next), 400)
+      })
+    } else {
+      setPhase('evaluating')
+      setStatusText('EVALUATING')
+      speakText('That is all 5 questions. Evaluating your answers now.', () => {
+        finishInterview(newAnswers)
+      })
+    }
+  }
 
   function askQuestion(index) {
     if (index >= questions.length) return
@@ -86,11 +79,9 @@ export default function InterviewScreen({ config, onFinish }) {
     setTimeout(() => typeQuestion(q), 1500)
   }
 
-
-
   function skipQuestion() {
-   stopListening()
-   resetTranscript()
+    stopListening()
+    resetTranscript()
     setShowSubmit(false)
     const newAnswers = [...answers, '[Skipped]']
     setAnswers(newAnswers)
@@ -119,10 +110,10 @@ export default function InterviewScreen({ config, onFinish }) {
     setStatusText('EVALUATING')
 
     const scores = await evaluateAnswers(questions, finalAnswers, config)
-      setTimeout(() => onFinish({ questions, answers: finalAnswers, scores }), 1000)
-    }
-  
-  if (!questions) return <div style={{color: '#fff', padding: '40px'}}>Generating your questions...</div>
+    setTimeout(() => onFinish({ questions, answers: finalAnswers, scores }), 1000)
+  }
+
+  if (!questions) return <div style={styles.loading}>Generating your questions...</div>
 
   return (
     <div style={styles.container}>
@@ -181,8 +172,8 @@ export default function InterviewScreen({ config, onFinish }) {
         <div style={styles.questionLabel}>Question {currentQ + 1} of {questions.length}</div>
         <div style={styles.questionText}>
           {displayedQuestion
-            ? <>{displayedQuestion}<span style={{ animation: 'blink 1s infinite', marginLeft: '1px', color: '#7c6aff' }}>|</span></>
-            : <span style={{ color: '#3a3a4a', fontStyle: 'italic' }}>Interviewer is preparing...</span>
+            ? <>{displayedQuestion}<span style={{ animation: 'blink 1s infinite', marginLeft: '1px', color: '#67e8f9' }}>|</span></>
+            : <span style={{ color: '#3f5f6b', fontStyle: 'italic' }}>Interviewer is preparing...</span>
           }
         </div>
       </div>
@@ -191,11 +182,11 @@ export default function InterviewScreen({ config, onFinish }) {
       <div style={styles.transcriptArea}>
         <div style={styles.transcriptLabel}>Your Answer</div>
         <div style={styles.transcriptInner}>
-          {transcript || <span style={{ color: '#3a3a4a', fontStyle: 'italic' }}>Your answer will appear here as you speak...</span>}
+          {transcript || <span style={{ color: '#3f5f6b', fontStyle: 'italic' }}>Your answer will appear here as you speak...</span>}
         </div>
       </div>
 
-      {/* Buttons — RECORD / PAUSE / SUBMIT / END */}
+      {/* Buttons: RECORD / PAUSE / SUBMIT / SKIP / END */}
       <div style={styles.actions}>
         {phase === 'ready' && (
           <button style={styles.recordBtn} onClick={startListening}>
@@ -228,13 +219,27 @@ export default function InterviewScreen({ config, onFinish }) {
   )
 }
 
+const mono = "'DM Mono', monospace"
+const sans = "'Poppins', sans-serif"
+
 const styles = {
+  loading: {
+    minHeight: '100vh',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: '#050f14',
+    color: '#84b3c0',
+    fontFamily: sans,
+    fontSize: '15px',
+  },
   container: {
     minHeight: '100vh',
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
-    background: 'radial-gradient(ellipse at top, #0d0d1a 0%, #0a0a0f 60%)',
+    background: 'radial-gradient(ellipse at top, #0a1820 0%, #050f14 60%)',
+    fontFamily: sans,
     padding: '0 24px 40px',
   },
   topBar: {
@@ -247,18 +252,18 @@ const styles = {
   },
   roleTag: {
     fontSize: '12px',
-    fontFamily: "'DM Mono', monospace",
-    color: '#7c6aff',
-    fontWeight: '700',
+    fontFamily: mono,
+    color: '#67e8f9',
+    fontWeight: '500',
     letterSpacing: '1px',
   },
   progressDots: { display: 'flex', gap: '6px' },
   dot: {
     width: '8px', height: '8px', borderRadius: '50%',
-    background: '#1a1a24', border: '1px solid rgba(255,255,255,0.13)',
+    background: '#0c1d25', border: '1px solid rgba(255,255,255,0.13)',
   },
   dotDone: { background: '#22c55e', border: '1px solid #22c55e' },
-  dotActive: { background: '#7c6aff', border: '1px solid #7c6aff' },
+  dotActive: { background: '#0891b2', border: '1px solid #0891b2' },
 
   orbArea: {
     display: 'flex',
@@ -279,7 +284,7 @@ const styles = {
     width: '220px',
     height: '220px',
     borderRadius: '50%',
-    border: '1px solid rgba(124,106,255,0.2)',
+    border: '1px solid rgba(103,232,249,0.2)',
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -58%)',
@@ -287,8 +292,8 @@ const styles = {
     transition: 'all 0.4s ease',
   },
   outerRingSpeaking: {
-    border: '1px solid rgba(124,106,255,0.5)',
-    boxShadow: '0 0 30px rgba(124,106,255,0.15)',
+    border: '1px solid rgba(103,232,249,0.5)',
+    boxShadow: '0 0 30px rgba(34,211,238,0.15)',
   },
   orb: {
     width: '170px',
@@ -302,20 +307,20 @@ const styles = {
     transition: 'all 0.4s ease',
   },
   orbIdle: {
-    background: 'radial-gradient(circle at 35% 35%, #2a1f6e, #1a1240)',
-    boxShadow: '0 0 30px rgba(124,106,255,0.25)',
+    background: 'radial-gradient(circle at 35% 35%, #155e75, #0a2a36)',
+    boxShadow: '0 0 30px rgba(8,145,178,0.25)',
     animation: 'orbIdle 3s ease-in-out infinite',
   },
   orbSpeaking: {
-    background: 'radial-gradient(circle at 35% 35%, #7c6aff, #4c35cc)',
+    background: 'radial-gradient(circle at 35% 35%, #22d3ee, #0891b2)',
     animation: 'orbGlow 1.2s ease-in-out infinite',
   },
   orbListening: {
-    background: 'radial-gradient(circle at 35% 35%, #5a4fd4, #3a2db0)',
+    background: 'radial-gradient(circle at 35% 35%, #0e7490, #0b4f63)',
     animation: 'listeningPulse 1.5s ease-in-out infinite',
   },
   orbEvaluating: {
-    background: 'radial-gradient(circle at 35% 35%, #2a1f6e, #1a1240)',
+    background: 'radial-gradient(circle at 35% 35%, #155e75, #0a2a36)',
     animation: 'orbIdle 3s ease-in-out infinite',
   },
   spinnerInner: {
@@ -327,33 +332,34 @@ const styles = {
   },
   statusBadge: {
     fontSize: '11px',
-    fontFamily: "'DM Mono', monospace",
-    color: '#7c6aff',
+    fontFamily: mono,
+    color: '#67e8f9',
     letterSpacing: '3px',
-    fontWeight: '700',
+    fontWeight: '500',
   },
 
   questionArea: {
     width: '100%',
     maxWidth: '500px',
     background: 'rgba(255,255,255,0.03)',
-    border: '1px solid rgba(124,106,255,0.15)',
+    border: '1px solid rgba(103,232,249,0.15)',
     borderRadius: '16px',
     padding: '18px 20px',
     marginBottom: '12px',
   },
   questionLabel: {
     fontSize: '10px',
-    fontFamily: "'DM Mono', monospace",
-    color: '#7c6aff',
-    fontWeight: '700',
+    fontFamily: mono,
+    color: '#67e8f9',
+    fontWeight: '500',
     marginBottom: '10px',
     textTransform: 'uppercase',
     letterSpacing: '2px',
   },
   questionText: {
+    fontFamily: sans,
     fontSize: '15px',
-    color: '#f0f0f8',
+    color: '#e8f7fa',
     lineHeight: '1.6',
     fontWeight: '500',
   },
@@ -370,16 +376,17 @@ const styles = {
   },
   transcriptLabel: {
     fontSize: '10px',
-    fontFamily: "'DM Mono', monospace",
-    color: '#4a4a5a',
-    fontWeight: '700',
+    fontFamily: mono,
+    color: '#5f8794',
+    fontWeight: '500',
     marginBottom: '10px',
     textTransform: 'uppercase',
     letterSpacing: '2px',
   },
   transcriptInner: {
+    fontFamily: sans,
     fontSize: '14px',
-    color: '#c0c0d8',
+    color: '#c4e3ea',
     lineHeight: '1.6',
     minHeight: '24px',
   },
@@ -393,25 +400,25 @@ const styles = {
   recordBtn: {
     padding: '14px 32px',
     background: 'transparent',
-    border: '1px solid rgba(255,255,255,0.15)',
+    border: '1px solid rgba(103,232,249,0.3)',
     borderRadius: '100px',
     fontSize: '12px',
-    fontWeight: '700',
-    color: '#fff',
+    fontWeight: '500',
+    color: '#e8f7fa',
     cursor: 'pointer',
-    fontFamily: "'DM Mono', monospace",
+    fontFamily: mono,
     letterSpacing: '2px',
   },
   pauseBtn: {
     padding: '14px 32px',
-    background: '#7c6aff',
+    background: '#0891b2',
     border: 'none',
     borderRadius: '100px',
     fontSize: '12px',
-    fontWeight: '700',
-    color: '#fff',
+    fontWeight: '500',
+    color: '#ecfeff',
     cursor: 'pointer',
-    fontFamily: "'DM Mono', monospace",
+    fontFamily: mono,
     letterSpacing: '2px',
   },
   submitBtn: {
@@ -420,10 +427,10 @@ const styles = {
     border: 'none',
     borderRadius: '100px',
     fontSize: '12px',
-    fontWeight: '700',
+    fontWeight: '500',
     color: '#fff',
     cursor: 'pointer',
-    fontFamily: "'DM Mono', monospace",
+    fontFamily: mono,
     letterSpacing: '2px',
   },
   skipBtn: {
@@ -432,9 +439,9 @@ const styles = {
     border: '1px solid rgba(255,255,255,0.07)',
     borderRadius: '100px',
     fontSize: '12px',
-    color: '#6b6b80',
+    color: '#6a9aa8',
     cursor: 'pointer',
-    fontFamily: "'DM Mono', monospace",
+    fontFamily: mono,
     letterSpacing: '2px',
   },
   endBtn: {
@@ -445,7 +452,7 @@ const styles = {
     fontSize: '12px',
     color: '#ef4444',
     cursor: 'pointer',
-    fontFamily: "'DM Mono', monospace",
+    fontFamily: mono,
     letterSpacing: '2px',
   },
 }
