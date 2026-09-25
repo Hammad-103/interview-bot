@@ -13,8 +13,16 @@ export default async function handler(req, res) {
     a: finalAnswers[i]
   }));
 
-  const prompt = `You are a strict but fair interviewer evaluating a ${config.level} ${config.role} candidate.
-Rate each answer from 1-9. If the answer is '[Skipped]' or empty, give it 0.
+  const prompt = `You are a supportive but honest interviewer evaluating a ${config.level} ${config.role} candidate. These answers were captured via speech-to-text during a live spoken interview, so expect run-on sentences, missing punctuation, filler words, and occasional transcription errors — do NOT penalize for grammar, phrasing, or how the answer is worded. Focus only on whether the underlying technical/conceptual understanding is correct.
+
+Scoring guide (1-9):
+- 8-9: Correct, solid understanding of the core concept, even if not exhaustive or perfectly phrased
+- 6-7: Mostly correct with minor gaps or missing detail
+- 4-5: Partially correct, shows some understanding but has notable gaps or a misconception
+- 2-3: Attempted but mostly incorrect or too vague to show real understanding
+- 0-1: Empty, "[Skipped]", or completely unrelated to the question
+
+Be generous with partial credit — a ${config.level} candidate does not need a textbook-perfect answer to score well. If the candidate demonstrates they understand the core idea, even informally or with imperfect wording, score it 6 or above.
 
 Questions and answers:
 ${qa.map((x, i) => `Q${i + 1}: ${x.q}\nAnswer: ${x.a}`).join("\n\n")}
